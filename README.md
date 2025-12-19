@@ -1,16 +1,70 @@
-# my_digital_project
+# My Digital Project – SCAN ALIM
 
-A new Flutter project.
+Application mobile développée en **Flutter** dans le cadre d’un projet scolaire (B3).  
+SCAN ALIM aide les utilisateurs à mieux comprendre leur alimentation grâce à l’analyse des produits achetés en magasin.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🎯 Objectif du projet
 
-A few resources to get you started if this is your first Flutter project:
+L’objectif de SCAN ALIM est de permettre aux utilisateurs de :
+- mieux connaître la **composition** de leurs courses
+- comprendre la **qualité** et la **provenance** des produits
+- obtenir des **recommandations de recettes** adaptées à leurs achats
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+L’application repose sur un **concept différenciant** :  
+👉 **scanner un QR code après les courses** afin de téléverser automatiquement les produits achetés dans l’application (circuit inversé).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 👥 Cibles
+
+- Personnes en **rééquilibrage alimentaire**
+- Personnes attentives à leur **alimentation**
+- Personnes sensibles à la **qualité** et à la **provenance** des produits
+- **Jeunes actifs / fin d’études (20–35 ans)**
+- Profil :
+  - plutôt citadin
+  - fait principalement ses courses en **grandes surfaces ou supérettes**
+
+---
+
+## 🚀 Fonctionnalités principales (prévisionnelles)
+
+- Scan d’un **QR code de ticket de caisse**
+- Téléversement automatique des produits achetés
+- Analyse nutritionnelle des produits
+- Visualisation claire des informations alimentaires
+- Suggestions de **recettes adaptées** aux courses de l’utilisateur
+- Historique des achats
+
+---
+
+## 🛠️ Stack technique
+
+- **Flutter** (Dart)
+- Android / iOS
+- Architecture modulaire (features, shared, app)
+- Outils :
+  - Git / GitHub
+  - VS Code
+  - Android Studio (SDK & émulateur)
+
+---
+
+## 🔧 Installation & dépendances (après clonage du dépôt)
+
+### Prérequis
+Avant de lancer le projet, assurez-vous d’avoir installé :
+- **Flutter SDK**
+- **Android Studio** (pour le SDK Android et les émulateurs)
+- **VS Code** avec les extensions *Flutter* et *Dart*
+- Un **émulateur Android** ou un **téléphone Android** (mode développeur activé)
+
+---
+
+### Vérification de l’environnement
+Dans un terminal, exécuter :
+
+flutter doctor
+
