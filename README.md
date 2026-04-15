@@ -40,6 +40,13 @@ L’application repose sur un **concept différenciant** :
 
 ---
 
+## 🌐 API et sources de données
+
+- Utilisation prévue de l’API Open Food Facts
+- Source de données : https://world.openfoodfacts.org/data
+
+---
+
 ## 🛠️ Stack technique
 
 - **Flutter** (Dart)
