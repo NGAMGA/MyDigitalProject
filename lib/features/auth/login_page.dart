@@ -1,11 +1,62 @@
 import 'package:flutter/material.dart';
 
 import '../../app/komi_app.dart';
+import 'data/auth_api_client.dart';
+import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
 import 'signup_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _apiClient = AuthApiClient();
+  final _sessionStore = const AuthSessionStore();
+
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      final session = await _apiClient.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      await _sessionStore.save(session);
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const MainShell()),
+        (_) => false,
+      );
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,21 +95,24 @@ class LoginPage extends StatelessWidget {
                                 width: formWidth,
                                 child: Column(
                                   children: [
-                                    const _LoginTextField(
+                                    _LoginTextField(
+                                      controller: _emailController,
                                       hintText: 'Adresse mail',
                                       keyboardType: TextInputType.emailAddress,
                                       textInputAction: TextInputAction.next,
                                     ),
                                     const SizedBox(height: 10),
                                     _LoginTextField(
+                                      controller: _passwordController,
                                       hintText: 'Mot de passe',
                                       obscureText: true,
                                       textInputAction: TextInputAction.done,
-                                      onSubmitted: (_) => _goToApp(context),
+                                      onSubmitted: (_) => _submit(),
                                     ),
                                     const SizedBox(height: 12),
                                     _LoginMainButton(
-                                      onPressed: () => _goToApp(context),
+                                      isLoading: _isSubmitting,
+                                      onPressed: _submit,
                                     ),
                                     const SizedBox(height: 18),
                                     const _OrDivider(),
@@ -107,13 +161,6 @@ class LoginPage extends StatelessWidget {
       ),
     );
   }
-
-  static void _goToApp(BuildContext context) {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const MainShell()),
-      (_) => false,
-    );
-  }
 }
 
 class _LoginHeader extends StatelessWidget {
@@ -152,6 +199,7 @@ class _LoginHeader extends StatelessWidget {
 
 class _LoginTextField extends StatefulWidget {
   const _LoginTextField({
+    required this.controller,
     required this.hintText,
     this.obscureText = false,
     this.keyboardType,
@@ -159,6 +207,7 @@ class _LoginTextField extends StatefulWidget {
     this.onSubmitted,
   });
 
+  final TextEditingController controller;
   final String hintText;
   final bool obscureText;
   final TextInputType? keyboardType;
@@ -193,6 +242,7 @@ class _LoginTextFieldState extends State<_LoginTextField> {
     return SizedBox(
       height: 36,
       child: TextField(
+        controller: widget.controller,
         focusNode: _focusNode,
         obscureText: widget.obscureText,
         keyboardType: widget.keyboardType,
@@ -230,9 +280,10 @@ class _LoginTextFieldState extends State<_LoginTextField> {
 }
 
 class _LoginMainButton extends StatelessWidget {
-  const _LoginMainButton({required this.onPressed});
+  const _LoginMainButton({required this.onPressed, required this.isLoading});
 
   final VoidCallback onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -247,8 +298,14 @@ class _LoginMainButton extends StatelessWidget {
           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           shape: const StadiumBorder(),
         ),
-        onPressed: onPressed,
-        child: const Text('Connexion'),
+        onPressed: isLoading ? null : onPressed,
+        child: isLoading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Connexion'),
       ),
     );
   }
