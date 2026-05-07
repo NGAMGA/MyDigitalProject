@@ -5,6 +5,7 @@ import 'data/auth_api_client.dart';
 import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
 import 'signup_page.dart';
+import 'social_auth_buttons.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,6 +56,16 @@ class _LoginPageState extends State<LoginPage> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
+    );
+  }
+
+  void _handleSocialAuth(String provider) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Connexion avec $provider bientot disponible.',
+        ),
+      ),
     );
   }
 
@@ -117,19 +128,11 @@ class _LoginPageState extends State<LoginPage> {
                                     const SizedBox(height: 18),
                                     const _OrDivider(),
                                     const SizedBox(height: 16),
-                                    _SocialButton(
-                                      leading: const Icon(
-                                        Icons.apple_rounded,
-                                        size: 18,
-                                      ),
-                                      label: 'Continuer avec apple',
-                                      onPressed: () {},
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _SocialButton(
-                                      leading: const _GoogleLetter(),
-                                      label: 'Continuer avec google',
-                                      onPressed: () {},
+                                    SocialAuthButtons(
+                                      onGooglePressed: () =>
+                                          _handleSocialAuth('Google'),
+                                      onApplePressed: () =>
+                                          _handleSocialAuth('Apple'),
                                     ),
                                   ],
                                 ),
@@ -332,60 +335,6 @@ class _OrDivider extends StatelessWidget {
         ),
         Expanded(child: Divider(color: Color(0xFFB7B7B7), thickness: 1.2)),
       ],
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({
-    required this.leading,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final Widget leading;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 210,
-      height: 36,
-      child: OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF222222),
-          side: const BorderSide(color: Color(0xFF8A8A8A), width: 1.25),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          shape: const StadiumBorder(),
-        ),
-        onPressed: onPressed,
-        icon: leading,
-        label: Text(label),
-      ),
-    );
-  }
-}
-
-class _GoogleLetter extends StatelessWidget {
-  const _GoogleLetter();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 18,
-      child: Text(
-        'G',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 17,
-          height: 1,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -1.2,
-        ),
-      ),
     );
   }
 }
