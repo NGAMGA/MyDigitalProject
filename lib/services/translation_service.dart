@@ -7,24 +7,25 @@ class TranslationService {
     receiveTimeout: const Duration(seconds: 10),
   ));
 
-
-  static const String sourceLang = 'en';
-
   static const Map<String, String> supportedLanguages = {
     'en': 'English',
-    'fr': 'Français',
-    'es': 'Español',
+    'fr': 'Francais',
+    'es': 'Espanol',
     'it': 'Italiano',
     'de': 'Deutsch',
-    'pt': 'Português',
-    'ar': 'العربية',
+    'pt': 'Portugues',
   };
 
-  Future<String> translate(String text, String targetLang) async {
+  final Map<String, String> _cache = {};
 
-    if (targetLang == sourceLang) return text;
+  Future<String> translate(String text, String targetLang) async {
+    if (targetLang == 'en') return text;
+
+    final cacheKey = '$targetLang:${text.hashCode}';
+    if (_cache.containsKey(cacheKey)) return _cache[cacheKey]!;
 
     try {
+      // MyMemory limite la taille utile des textes longs, donc on traduit par morceaux.
       final chunks = _splitText(text, 480);
       final translated = <String>[];
 
@@ -33,17 +34,22 @@ class TranslationService {
           '/get',
           queryParameters: {
             'q': chunk,
-            'langpair': '$sourceLang|$targetLang',
+            'langpair': 'en|$targetLang',
           },
         );
         final result =
-        response.data['responseData']['translatedText'] as String;
-        translated.add(result);
+            response.data['responseData']['translatedText'] as String?;
+        if (result == null || result.trim().isEmpty) {
+          throw Exception('Empty translation');
+        }
+        translated.add(_decodeHtmlEntities(result));
       }
 
-      return translated.join(' ');
+      final finalText = translated.join(' ');
+      _cache[cacheKey] = finalText;
+      return finalText;
     } catch (e) {
-      throw 'Traduction impossible. Verifiez votre connexion.';
+      throw 'Traduction impossible. Verifiez votre connexion puis reessayez.';
     }
   }
 
@@ -53,7 +59,7 @@ class TranslationService {
     var current = '';
 
     for (final word in words) {
-      if ((current + ' ' + word).length > maxLength) {
+      if ('$current $word'.length > maxLength) {
         if (current.isNotEmpty) chunks.add(current.trim());
         current = word;
       } else {
@@ -62,5 +68,14 @@ class TranslationService {
     }
     if (current.trim().isNotEmpty) chunks.add(current.trim());
     return chunks;
+  }
+
+  String _decodeHtmlEntities(String value) {
+    return value
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>');
   }
 }

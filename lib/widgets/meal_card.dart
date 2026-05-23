@@ -12,79 +12,81 @@ class MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4CAF7D).withOpacity(0.10),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Row(
           children: [
-
             ClipRRect(
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
+                topLeft: Radius.circular(18),
+                bottomLeft: Radius.circular(18),
               ),
               child: meal.thumbnail != null
                   ? CachedNetworkImage(
-                imageUrl: meal.thumbnail!,
-                width: 110,
-                height: 110,
-                fit: BoxFit.cover,
-                placeholder: (context, url) {
-                  return Container(
-                    width: 110,
-                    height: 110,
-                    color: const Color(0xFFE8F5EE),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF4CAF7D),
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  );
-                },
-                errorWidget: (context, url, error) {
-                  return Container(
-                    width: 110,
-                    height: 110,
-                    color: const Color(0xFFE8F5EE),
-                    child: const Icon(Icons.restaurant, color: Color(0xFF4CAF7D), size: 36),
-                  );
-                },
-              )
+                      imageUrl: meal.thumbnail!,
+                      width: 112,
+                      height: 112,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) {
+                        return Container(
+                          width: 112,
+                          height: 112,
+                          color: const Color(0xFFE8F5EE),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF4CAF7D),
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
+                      errorWidget: (context, url, error) {
+                        return Container(
+                          width: 112,
+                          height: 112,
+                          color: const Color(0xFFE8F5EE),
+                          child: Icon(Icons.restaurant,
+                              color: colorScheme.primary, size: 36),
+                        );
+                      },
+                    )
                   : Container(
-                width: 110,
-                height: 110,
-                color: const Color(0xFFE8F5EE),
-                child: const Icon(Icons.restaurant, color: Color(0xFF4CAF7D), size: 36),
-              ),
+                      width: 112,
+                      height: 112,
+                      color: const Color(0xFFE8F5EE),
+                      child: Icon(Icons.restaurant,
+                          color: colorScheme.primary, size: 36),
+                    ),
             ),
-
-
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       meal.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Georgia',
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A3A2A),
+                        color: colorScheme.onSurface,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -93,27 +95,30 @@ class MealCard extends StatelessWidget {
                     if (meal.area != null)
                       Row(
                         children: [
-                          const Icon(Icons.public, size: 12, color: Color(0xFF4CAF7D)),
+                          Icon(Icons.public,
+                              size: 12, color: colorScheme.primary),
                           const SizedBox(width: 4),
                           Text(
                             meal.area!,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF4CAF7D)),
+                            style: TextStyle(
+                                fontSize: 12, color: colorScheme.primary),
                           ),
                         ],
                       ),
                     if (meal.category != null) ...[
                       const SizedBox(height: 5),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5EE),
+                          color: colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           meal.category!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF2E7D52),
+                            color: colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -123,8 +128,6 @@ class MealCard extends StatelessWidget {
                 ),
               ),
             ),
-
-
             Consumer<FavoritesProvider>(
               builder: (context, favProvider, child) {
                 final isFav = favProvider.isFavorite(meal.id);
@@ -136,14 +139,24 @@ class MealCard extends StatelessWidget {
                       return ScaleTransition(scale: animation, child: child);
                     },
                     child: Icon(
-                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      isFav
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
                       key: ValueKey(isFav),
-                      color: isFav ? const Color(0xFF4CAF7D) : const Color(0xFFBDBDBD),
+                      color: isFav ? colorScheme.primary : colorScheme.outline,
                       size: 26,
                     ),
                   ),
                 );
               },
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.outline,
+                size: 22,
+              ),
             ),
           ],
         ),

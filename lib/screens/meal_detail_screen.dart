@@ -28,7 +28,6 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  // Traduction
   String _selectedLang = 'en';
   String? _translatedInstructions;
   bool _isTranslating = false;
@@ -55,33 +54,6 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     }
   }
 
-
-  String _complexityScore(int ingredientCount) {
-    if (ingredientCount <= 5) return ' Facile';
-    if (ingredientCount <= 10) return 'Moyen';
-    if (ingredientCount <= 15) return 'Elabore';
-    return 'Complexe';
-  }
-
-  double _complexityValue(int ingredientCount) {
-    if (ingredientCount <= 5) return 2.5;
-    if (ingredientCount <= 10) return 3.5;
-    if (ingredientCount <= 15) return 4.2;
-    return 5.0;
-  }
-
-  String _buildDescription(Meal meal) {
-    final parts = <String>[];
-    if (meal.area != null) parts.add('Originaire de la cuisine ${meal.area}');
-    if (meal.category != null) parts.add('categorie ${meal.category}');
-    if (meal.tags != null && meal.tags!.isNotEmpty) {
-      final tags = meal.tags!.split(',').take(3).join(', ');
-      parts.add('tags : $tags');
-    }
-    if (parts.isEmpty) return 'Un delicieux plat avec ${meal.ingredients.length} ingredients.';
-    return '${parts.join(', ')}. Ce plat necessite ${meal.ingredients.length} ingredients.';
-  }
-
   Future<void> _translate(String targetLang) async {
     if (_meal?.instructions == null) return;
     if (targetLang == _selectedLang) return;
@@ -92,6 +64,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       _selectedLang = targetLang;
     });
 
+    // Si on revient à l'anglais (langue source), pas besoin de traduire
     if (targetLang == 'en') {
       setState(() {
         _translatedInstructions = _meal!.instructions;
@@ -118,9 +91,11 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   }
 
   void _showLanguagePicker() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -131,13 +106,13 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Traduire les instructions',
+              Text(
+                'Langue des instructions',
                 style: TextStyle(
                   fontFamily: 'Georgia',
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A3A2A),
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 16),
@@ -153,25 +128,28 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                     height: 36,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF4CAF7D)
-                          : const Color(0xFFE8F5EE),
+                          ? colorScheme.primary
+                          : colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       Icons.language,
-                      color: isSelected ? Colors.white : const Color(0xFF4CAF7D),
+                      color: isSelected
+                          ? colorScheme.onPrimary
+                          : colorScheme.onPrimaryContainer,
                       size: 18,
                     ),
                   ),
                   title: Text(
                     entry.value,
                     style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: const Color(0xFF1A3A2A),
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: Color(0xFF4CAF7D))
+                      ? Icon(Icons.check_circle, color: colorScheme.primary)
                       : null,
                 );
               }),
@@ -192,12 +170,56 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     return TranslationService.supportedLanguages[_selectedLang] ?? 'EN';
   }
 
+  List<String> get _instructionSteps {
+    return _stepsFromText(_displayedInstructions);
+  }
+
+  List<String> _stepsFromText(String text) {
+    final normalized =
+        text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    if (normalized.isEmpty) return [];
+
+    final stepMatches = RegExp(
+      r'(?:^|\n)\s*(?:STEP|ETAPE|ÉTAPE)\s*\d+\s*[:.-]?\s*(.*?)(?=(?:\n\s*(?:STEP|ETAPE|ÉTAPE)\s*\d+\s*[:.-]?)|$)',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(normalized);
+    final structuredSteps = stepMatches
+        .map((match) => match.group(1)?.trim() ?? '')
+        .where((step) => step.isNotEmpty)
+        .toList();
+    if (structuredSteps.isNotEmpty) return structuredSteps;
+
+    final byLine = normalized
+        .split('\n')
+        .map((step) => step.trim())
+        .where((step) =>
+            step.isNotEmpty &&
+            !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+', caseSensitive: false)
+                .hasMatch(step))
+        .toList();
+    if (byLine.length > 1) return byLine;
+
+    return normalized
+        .split(RegExp(r'(?<=[.!?])\s+'))
+        .map((step) => step.trim())
+        .where((step) =>
+            step.length > 3 &&
+            !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+$', caseSensitive: false)
+                .hasMatch(step))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF4FAF6),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF4CAF7D))),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
       );
     }
     if (_errorMessage != null) return _buildError();
@@ -218,9 +240,11 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 56, color: Color(0xFFBDBDBD)),
+              const Icon(Icons.error_outline,
+                  size: 56, color: Color(0xFFBDBDBD)),
               const SizedBox(height: 16),
-              Text(_errorMessage!, textAlign: TextAlign.center,
+              Text(_errorMessage!,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(color: Color(0xFF757575))),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -246,19 +270,17 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
 
   Widget _buildDetail() {
     final meal = _meal!;
-    final complexity = _complexityValue(meal.ingredients.length);
-    final complexityLabel = _complexityScore(meal.ingredients.length);
-    final description = _buildDescription(meal);
-
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // AppBar avec image
           SliverAppBar(
-            expandedHeight: 260,
+            expandedHeight: 310,
             pinned: true,
-            backgroundColor: const Color(0xFF4CAF7D),
+            backgroundColor: colorScheme.primary,
             foregroundColor: Colors.white,
             actions: [
               Consumer<FavoritesProvider>(
@@ -285,6 +307,11 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 56,
+                end: 56,
+                bottom: 14,
+              ),
               title: Text(
                 meal.name,
                 style: const TextStyle(
@@ -298,22 +325,27 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                 children: [
                   meal.thumbnail != null
                       ? CachedNetworkImage(
-                    imageUrl: meal.thumbnail!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) {
-                      return Container(color: const Color(0xFFE8F5EE));
-                    },
-                    errorWidget: (context, url, error) {
-                      return Container(color: const Color(0xFFE8F5EE));
-                    },
-                  )
+                          imageUrl: meal.thumbnail!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) {
+                            return Container(color: const Color(0xFFE8F5EE));
+                          },
+                          errorWidget: (context, url, error) {
+                            return Container(color: const Color(0xFFE8F5EE));
+                          },
+                        )
                       : Container(color: const Color(0xFFE8F5EE)),
+                  // Dégradé bas
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black54],
+                        colors: [
+                          Colors.black12,
+                          Colors.transparent,
+                          Colors.black87,
+                        ],
                       ),
                     ),
                   ),
@@ -328,8 +360,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  // Tags region + categorie
+                  // Tags région + catégorie
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
@@ -339,121 +370,20 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                         _tag(Icons.category_outlined, meal.category!),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
-
-                  _sectionTitle('Description'),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF4CAF7D).withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF3D3D3D),
-                        height: 1.6,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-
-                  _sectionTitle('Note de complexite'),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF4CAF7D).withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        // Etoiles
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: List.generate(5, (i) {
-                                return Icon(
-                                  i < complexity.floor()
-                                      ? Icons.star_rounded
-                                      : (i < complexity
-                                      ? Icons.star_half_rounded
-                                      : Icons.star_outline_rounded),
-                                  color: const Color(0xFFFFB800),
-                                  size: 24,
-                                );
-                              }),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              complexityLabel,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2E7D52),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        // Chiffre
-                        Column(
-                          children: [
-                            Text(
-                              complexity.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1A3A2A),
-                                fontFamily: 'Georgia',
-                              ),
-                            ),
-                            const Text(
-                              '/ 5.0',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF9E9E9E),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-
+                  // Ingrédients
                   _sectionTitle('Ingredients'),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF4CAF7D).withOpacity(0.08),
-                          blurRadius: 8,
+                          color: colorScheme.primary.withValues(alpha: 0.08),
+                          blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
                       ],
@@ -467,8 +397,8 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                               Container(
                                 width: 8,
                                 height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF4CAF7D),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primary,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -478,9 +408,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                                   meal.measures[i].isNotEmpty
                                       ? '${meal.measures[i]} - ${meal.ingredients[i]}'
                                       : meal.ingredients[i],
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
-                                    color: Color(0xFF2D2D2D),
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                               ),
@@ -490,21 +420,22 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                       }),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 28),
 
-
+                  // Instructions avec bouton traduction
                   if (meal.instructions != null) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _sectionTitle('Instructions'),
+                        // Bouton traduction
                         GestureDetector(
                           onTap: _showLanguagePicker,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 7),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF4CAF7D),
+                              color: colorScheme.primary,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -527,69 +458,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF4CAF7D).withOpacity(0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: _isTranslating
-                          ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              CircularProgressIndicator(
-                                  color: Color(0xFF4CAF7D)),
-                              SizedBox(height: 12),
-                              Text(
-                                'Traduction en cours...',
-                                style: TextStyle(
-                                    color: Color(0xFF4CAF7D),
-                                    fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                          : _translationError != null
-                          ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _translationError!,
-                            style: const TextStyle(
-                                color: Colors.red, fontSize: 13),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            meal.instructions!,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF3D3D3D),
-                              height: 1.7,
-                            ),
-                          ),
-                        ],
-                      )
-                          : Text(
-                        _displayedInstructions,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF3D3D3D),
-                          height: 1.7,
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 12),
+
+                    // Contenu instructions
+                    _buildInstructionsCard(theme, colorScheme, meal),
                   ],
                   const SizedBox(height: 40),
                 ],
@@ -602,21 +474,22 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   }
 
   Widget _tag(IconData icon, String label) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5EE),
+        color: colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: const Color(0xFF4CAF7D)),
+          Icon(icon, size: 14, color: colorScheme.onPrimaryContainer),
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF2E7D52),
+            style: TextStyle(
+              color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
@@ -626,14 +499,131 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     );
   }
 
+  Widget _buildInstructionsCard(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    Meal meal,
+  ) {
+    if (_isTranslating) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: _softCardDecoration(theme, colorScheme),
+        child: Center(
+          child: Column(
+            children: [
+              CircularProgressIndicator(color: colorScheme.primary),
+              const SizedBox(height: 12),
+              Text(
+                'Traduction en cours...',
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final steps = _translationError != null
+        ? _stepsFromText(meal.instructions!)
+        : _instructionSteps;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_translationError != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _translationError!,
+              style: TextStyle(
+                color: colorScheme.onErrorContainer,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        ...List.generate(steps.length, (index) {
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: _softCardDecoration(theme, colorScheme),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    steps[index],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: colorScheme.onSurface,
+                      height: 1.55,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  BoxDecoration _softCardDecoration(ThemeData theme, ColorScheme colorScheme) {
+    return BoxDecoration(
+      color: theme.cardColor,
+      borderRadius: BorderRadius.circular(18),
+      border:
+          Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+      boxShadow: [
+        BoxShadow(
+          color: colorScheme.shadow.withValues(alpha: 0.06),
+          blurRadius: 14,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    );
+  }
+
   Widget _sectionTitle(String title) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Georgia',
         fontSize: 19,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A3A2A),
+        color: colorScheme.onSurface,
       ),
     );
   }

@@ -19,6 +19,12 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _hasSearched = false;
+  final List<String> _quickSearches = const [
+    'Pasta',
+    'Chicken',
+    'Sushi',
+    'Vegan',
+  ];
 
   Future<void> _search() async {
     final query = _searchController.text.trim();
@@ -52,22 +58,19 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF7D),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,10 +81,11 @@ class _SearchScreenState extends State<SearchScreen> {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.restaurant_menu, color: Colors.white, size: 22),
+                        child: const Icon(Icons.restaurant_menu,
+                            color: Colors.white, size: 22),
                       ),
                       const SizedBox(width: 10),
                       const Text(
@@ -95,22 +99,34 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Trouvez une recette, explorez les cuisines et gardez vos favoris.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-
                   Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _searchController,
                           onSubmitted: (_) => _search(),
-                          style: const TextStyle(color: Color(0xFF1A3A2A), fontSize: 15),
+                          style: const TextStyle(
+                              color: Color(0xFF1A3A2A), fontSize: 15),
                           decoration: InputDecoration(
                             hintText: 'Pasta, Chicken, Sushi...',
-                            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                            prefixIcon: const Icon(Icons.search, color: Color(0xFF4CAF7D), size: 22),
+                            hintStyle: TextStyle(
+                                color: Colors.grey[400], fontSize: 14),
+                            prefixIcon: Icon(Icons.search,
+                                color: colorScheme.primary, size: 22),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 13),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
                               borderSide: BorderSide.none,
@@ -122,28 +138,85 @@ class _SearchScreenState extends State<SearchScreen> {
                       GestureDetector(
                         onTap: _search,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2E7D52),
+                            color: const Color(0xFF1F6B45),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: const Text(
-                            'Go',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
+                          child: const Icon(Icons.arrow_forward_rounded,
+                              color: Colors.white),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 34,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _quickSearches.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final query = _quickSearches[index];
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () {
+                            _searchController.text = query;
+                            _search();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.14)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.38),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.restaurant,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF145C39),
+                                  size: 15,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  query,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF145C39),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
-
-
             Expanded(child: _buildContent()),
           ],
         ),
@@ -165,7 +238,8 @@ class _SearchScreenState extends State<SearchScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wifi_off_rounded, size: 56, color: Color(0xFFBDBDBD)),
+              const Icon(Icons.wifi_off_rounded,
+                  size: 56, color: Color(0xFFBDBDBD)),
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
@@ -178,7 +252,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF4CAF7D),
                   side: const BorderSide(color: Color(0xFF4CAF7D)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Reessayer'),
               ),
@@ -200,7 +275,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 color: const Color(0xFFE8F5EE),
                 borderRadius: BorderRadius.circular(45),
               ),
-              child: const Icon(Icons.search, size: 48, color: Color(0xFF4CAF7D)),
+              child:
+                  const Icon(Icons.search, size: 48, color: Color(0xFF4CAF7D)),
             ),
             const SizedBox(height: 20),
             const Text(

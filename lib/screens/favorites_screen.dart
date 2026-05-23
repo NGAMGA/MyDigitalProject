@@ -9,8 +9,9 @@ class FavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -18,19 +19,16 @@ class FavoritesScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF7D),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.favorite_rounded, color: Colors.white, size: 28),
+                      Icon(Icons.favorite_rounded,
+                          color: Colors.white, size: 28),
                       SizedBox(width: 10),
                       Text(
                         'Mes Favoris',
@@ -84,7 +82,8 @@ class FavoritesScreen extends StatelessWidget {
                           Text(
                             'Appuyez sur le coeur sur une recette\npour l\'ajouter ici',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                            style: TextStyle(
+                                color: Colors.grey[500], fontSize: 13),
                           ),
                         ],
                       ),

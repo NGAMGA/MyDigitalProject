@@ -4,7 +4,6 @@ import '../models/meal.dart';
 import '../widgets/meal_card.dart';
 import 'meal_detail_screen.dart';
 
-
 const Map<String, String> areaToRegion = {
   'American': 'Ameriques',
   'British': 'Europe',
@@ -112,15 +111,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   // Grouper les zones par grande région
-  Map<String, List<String>> get _groupedAreas {
-    final Map<String, List<String>> grouped = {};
-    for (final area in _allAreas) {
-      final region = areaToRegion[area] ?? 'Autre';
-      grouped.putIfAbsent(region, () => []).add(area);
-    }
-    return grouped;
-  }
-
   List<String> get _filteredAreas {
     if (_selectedRegion == null) return _allAreas;
     return _allAreas
@@ -130,8 +120,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FAF6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -139,19 +130,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
-              decoration: const BoxDecoration(
-                color: Color(0xFF2E7D52),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.explore_rounded, color: Colors.white, size: 28),
+                      Icon(Icons.explore_rounded,
+                          color: Colors.white, size: 28),
                       SizedBox(width: 10),
                       Text(
                         'Explorer',
@@ -187,12 +175,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
             if (_loadingAreas)
               const Expanded(
-                child: Center(child: CircularProgressIndicator(color: Color(0xFF4CAF7D))),
+                child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF4CAF7D))),
               )
             else if (_error != null)
               Expanded(
                 child: Center(
-                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child:
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
                 ),
               )
             else
@@ -209,7 +199,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _regionChip(String? region, String label) {
     final isSelected = _selectedRegion == region;
-    final color = region != null ? regionColors[region]! : const Color(0xFF4CAF7D);
+    final color =
+        region != null ? regionColors[region]! : const Color(0xFF4CAF7D);
     return GestureDetector(
       onTap: () => setState(() {
         _selectedRegion = region;
@@ -220,7 +211,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+          color:
+              isSelected ? Colors.white : Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -256,14 +248,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.85), color],
+                colors: [color.withValues(alpha: 0.85), color],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.25),
+                  color: color.withValues(alpha: 0.25),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -275,7 +267,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(icon, color: Colors.white.withOpacity(0.8), size: 28),
+                  Icon(icon,
+                      color: Colors.white.withValues(alpha: 0.8), size: 28),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -291,7 +284,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       Text(
                         region,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 11,
                         ),
                       ),
@@ -344,7 +337,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
         if (_loadingMeals)
           const Expanded(
-            child: Center(child: CircularProgressIndicator(color: Color(0xFF4CAF7D))),
+            child: Center(
+                child: CircularProgressIndicator(color: Color(0xFF4CAF7D))),
           )
         else if (_meals.isEmpty)
           const Expanded(
