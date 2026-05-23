@@ -110,7 +110,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  // Grouper les zones par grande région
+
   List<String> get _filteredAreas {
     if (_selectedRegion == null) return _allAreas;
     return _allAreas
@@ -302,7 +302,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _buildMealsList() {
     return Column(
       children: [
-        // Bouton retour + titre
+
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
           child: Row(

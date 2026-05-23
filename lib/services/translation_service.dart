@@ -25,7 +25,7 @@ class TranslationService {
     if (_cache.containsKey(cacheKey)) return _cache[cacheKey]!;
 
     try {
-      // MyMemory limite la taille utile des textes longs, donc on traduit par morceaux.
+
       final chunks = _splitText(text, 480);
       final translated = <String>[];
 

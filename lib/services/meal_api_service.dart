@@ -2,12 +2,22 @@ import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/meal.dart';
 
+
+const List<String> validAreas = [
+  'American', 'British', 'Canadian', 'Chinese', 'Croatian',
+  'Dutch', 'Egyptian', 'Filipino', 'French', 'Greek',
+  'Indian', 'Irish', 'Italian', 'Jamaican', 'Japanese',
+  'Kenyan', 'Malaysian', 'Mexican', 'Moroccan', 'Polish',
+  'Portuguese', 'Russian', 'Spanish', 'Thai', 'Tunisian',
+  'Turkish', 'Ukrainian', 'Vietnamese',
+];
+
 class MealApiService {
   late final Dio _dio;
 
   MealApiService() {
-    final baseUrl =
-        dotenv.env['API_BASE_URL'] ?? 'https://www.themealdb.com/api/json/v1/1';
+    final baseUrl = dotenv.env['API_BASE_URL'] ??
+        'https://www.themealdb.com/api/json/v1/1';
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 10),
@@ -15,26 +25,20 @@ class MealApiService {
     ));
   }
 
-  /// Recherche par nom
   Future<List<Meal>> searchMeals(String query) async {
     try {
-      final response =
-          await _dio.get('/search.php', queryParameters: {'s': query});
+      final response = await _dio.get('/search.php', queryParameters: {'s': query});
       final data = response.data;
       if (data['meals'] == null) return [];
-      return (data['meals'] as List)
-          .map((j) => Meal.fromSearchJson(j))
-          .toList();
+      return (data['meals'] as List).map((j) => Meal.fromSearchJson(j)).toList();
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  /// Detail d'une recette par ID
   Future<Meal?> getMealDetail(String id) async {
     try {
-      final response =
-          await _dio.get('/lookup.php', queryParameters: {'i': id});
+      final response = await _dio.get('/lookup.php', queryParameters: {'i': id});
       final data = response.data;
       if (data['meals'] == null || (data['meals'] as List).isEmpty) return null;
       return Meal.fromDetailJson(data['meals'][0]);
@@ -43,34 +47,20 @@ class MealApiService {
     }
   }
 
-  /// Plats par region/culture (ex: French, Japanese, Moroccan...)
   Future<List<Meal>> getMealsByArea(String area) async {
     try {
-      final response =
-          await _dio.get('/filter.php', queryParameters: {'a': area});
+      final response = await _dio.get('/filter.php', queryParameters: {'a': area});
       final data = response.data;
       if (data['meals'] == null) return [];
-      return (data['meals'] as List)
-          .map((j) => Meal.fromSearchJson(j))
-          .toList();
+      return (data['meals'] as List).map((j) => Meal.fromSearchJson(j)).toList();
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  /// Liste de toutes les regions disponibles
+
   Future<List<String>> getAllAreas() async {
-    try {
-      final response =
-          await _dio.get('/list.php', queryParameters: {'a': 'list'});
-      final data = response.data;
-      if (data['meals'] == null) return [];
-      return (data['meals'] as List)
-          .map((j) => j['strArea'].toString())
-          .toList();
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
+    return validAreas;
   }
 
   String _handleError(DioException e) {
