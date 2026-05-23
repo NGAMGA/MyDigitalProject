@@ -29,7 +29,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   String? _errorMessage;
 
   // Traduction
-  String _selectedLang = 'fr';
+  String _selectedLang = 'en';
   String? _translatedInstructions;
   bool _isTranslating = false;
   String? _translationError;
@@ -46,8 +46,6 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       setState(() {
         _meal = meal;
         _isLoading = false;
-        // Les instructions de TheMealDB sont en anglais, on les affiche telles quelles
-        // L'utilisateur peut traduire via le bouton
       });
     } catch (e) {
       setState(() {
@@ -55,6 +53,33 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         _isLoading = false;
       });
     }
+  }
+
+
+  String _complexityScore(int ingredientCount) {
+    if (ingredientCount <= 5) return ' Facile';
+    if (ingredientCount <= 10) return 'Moyen';
+    if (ingredientCount <= 15) return 'Elabore';
+    return 'Complexe';
+  }
+
+  double _complexityValue(int ingredientCount) {
+    if (ingredientCount <= 5) return 2.5;
+    if (ingredientCount <= 10) return 3.5;
+    if (ingredientCount <= 15) return 4.2;
+    return 5.0;
+  }
+
+  String _buildDescription(Meal meal) {
+    final parts = <String>[];
+    if (meal.area != null) parts.add('Originaire de la cuisine ${meal.area}');
+    if (meal.category != null) parts.add('categorie ${meal.category}');
+    if (meal.tags != null && meal.tags!.isNotEmpty) {
+      final tags = meal.tags!.split(',').take(3).join(', ');
+      parts.add('tags : $tags');
+    }
+    if (parts.isEmpty) return 'Un delicieux plat avec ${meal.ingredients.length} ingredients.';
+    return '${parts.join(', ')}. Ce plat necessite ${meal.ingredients.length} ingredients.';
   }
 
   Future<void> _translate(String targetLang) async {
@@ -67,7 +92,6 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       _selectedLang = targetLang;
     });
 
-    // Si on revient à l'anglais (langue source), pas besoin de traduire
     if (targetLang == 'en') {
       setState(() {
         _translatedInstructions = _meal!.instructions;
@@ -201,8 +225,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _loadDetail,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF7D)),
-                child: const Text('Reessayer', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF7D)),
+                child: const Text('Reessayer',
+                    style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -220,6 +246,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
 
   Widget _buildDetail() {
     final meal = _meal!;
+    final complexity = _complexityValue(meal.ingredients.length);
+    final complexityLabel = _complexityScore(meal.ingredients.length);
+    final description = _buildDescription(meal);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4FAF6),
       body: CustomScrollView(
@@ -242,7 +272,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                         return ScaleTransition(scale: animation, child: child);
                       },
                       child: Icon(
-                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        isFav
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
                         key: ValueKey(isFav),
                         color: isFav ? Colors.redAccent : Colors.white,
                         size: 26,
@@ -276,13 +308,12 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                     },
                   )
                       : Container(color: const Color(0xFFE8F5EE)),
-                  // Dégradé bas
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black45],
+                        colors: [Colors.transparent, Colors.black54],
                       ),
                     ),
                   ),
@@ -297,29 +328,132 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tags région + catégorie
+
+                  // Tags region + categorie
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
                     children: [
                       if (meal.area != null) _tag(Icons.public, meal.area!),
-                      if (meal.category != null) _tag(Icons.category_outlined, meal.category!),
+                      if (meal.category != null)
+                        _tag(Icons.category_outlined, meal.category!),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // Ingrédients
-                  _sectionTitle('Ingredients'),
-                  const SizedBox(height: 12),
+
+                  _sectionTitle('Description'),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4CAF7D).withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF3D3D3D),
+                        height: 1.6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+
+                  _sectionTitle('Note de complexite'),
+                  const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFF4CAF7D).withOpacity(0.08),
-                          blurRadius: 10,
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Etoiles
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: List.generate(5, (i) {
+                                return Icon(
+                                  i < complexity.floor()
+                                      ? Icons.star_rounded
+                                      : (i < complexity
+                                      ? Icons.star_half_rounded
+                                      : Icons.star_outline_rounded),
+                                  color: const Color(0xFFFFB800),
+                                  size: 24,
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              complexityLabel,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2E7D52),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        // Chiffre
+                        Column(
+                          children: [
+                            Text(
+                              complexity.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1A3A2A),
+                                fontFamily: 'Georgia',
+                              ),
+                            ),
+                            const Text(
+                              '/ 5.0',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF9E9E9E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+
+                  _sectionTitle('Ingredients'),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4CAF7D).withOpacity(0.08),
+                          blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
                       ],
@@ -356,19 +490,19 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                       }),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
 
-                  // Instructions avec bouton traduction
+
                   if (meal.instructions != null) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _sectionTitle('Instructions'),
-                        // Bouton traduction
                         GestureDetector(
                           onTap: _showLanguagePicker,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 7),
                             decoration: BoxDecoration(
                               color: const Color(0xFF4CAF7D),
                               borderRadius: BorderRadius.circular(20),
@@ -376,7 +510,8 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.translate, color: Colors.white, size: 16),
+                                const Icon(Icons.translate,
+                                    color: Colors.white, size: 16),
                                 const SizedBox(width: 5),
                                 Text(
                                   _currentLangLabel,
@@ -392,19 +527,17 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-
-                    // Contenu instructions
+                    const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF4CAF7D).withOpacity(0.08),
-                            blurRadius: 10,
+                            blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
                         ],
@@ -415,11 +548,14 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                           padding: EdgeInsets.all(20),
                           child: Column(
                             children: [
-                              CircularProgressIndicator(color: Color(0xFF4CAF7D)),
+                              CircularProgressIndicator(
+                                  color: Color(0xFF4CAF7D)),
                               SizedBox(height: 12),
                               Text(
                                 'Traduction en cours...',
-                                style: TextStyle(color: Color(0xFF4CAF7D), fontSize: 13),
+                                style: TextStyle(
+                                    color: Color(0xFF4CAF7D),
+                                    fontSize: 13),
                               ),
                             ],
                           ),
@@ -427,10 +563,12 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                       )
                           : _translationError != null
                           ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             _translationError!,
-                            style: const TextStyle(color: Colors.red, fontSize: 13),
+                            style: const TextStyle(
+                                color: Colors.red, fontSize: 13),
                           ),
                           const SizedBox(height: 8),
                           Text(

@@ -4,7 +4,7 @@ import '../models/meal.dart';
 import '../widgets/meal_card.dart';
 import 'meal_detail_screen.dart';
 
-// Mapping région TheMealDB → continent/zone culturelle
+
 const Map<String, String> areaToRegion = {
   'American': 'Ameriques',
   'British': 'Europe',

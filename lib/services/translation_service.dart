@@ -7,9 +7,12 @@ class TranslationService {
     receiveTimeout: const Duration(seconds: 10),
   ));
 
+
+  static const String sourceLang = 'en';
+
   static const Map<String, String> supportedLanguages = {
-    'fr': 'Français',
     'en': 'English',
+    'fr': 'Français',
     'es': 'Español',
     'it': 'Italiano',
     'de': 'Deutsch',
@@ -18,9 +21,10 @@ class TranslationService {
   };
 
   Future<String> translate(String text, String targetLang) async {
-    if (targetLang == 'fr') return text;
+
+    if (targetLang == sourceLang) return text;
+
     try {
-      // On découpe le texte si trop long (limite MyMemory = 500 chars par requête)
       final chunks = _splitText(text, 480);
       final translated = <String>[];
 
@@ -29,16 +33,17 @@ class TranslationService {
           '/get',
           queryParameters: {
             'q': chunk,
-            'langpair': 'en|$targetLang',
+            'langpair': '$sourceLang|$targetLang',
           },
         );
-        final result = response.data['responseData']['translatedText'] as String;
+        final result =
+        response.data['responseData']['translatedText'] as String;
         translated.add(result);
       }
 
       return translated.join(' ');
     } catch (e) {
-      throw 'Traduction impossible. Vérifiez votre connexion.';
+      throw 'Traduction impossible. Verifiez votre connexion.';
     }
   }
 

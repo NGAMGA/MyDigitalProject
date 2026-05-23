@@ -29,7 +29,7 @@ class MealCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Image
+
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
@@ -71,7 +71,7 @@ class MealCard extends StatelessWidget {
               ),
             ),
 
-            // Infos
+
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -124,7 +124,7 @@ class MealCard extends StatelessWidget {
               ),
             ),
 
-            // Favori
+
             Consumer<FavoritesProvider>(
               builder: (context, favProvider, child) {
                 final isFav = favProvider.isFavorite(meal.id);

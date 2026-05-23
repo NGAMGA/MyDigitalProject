@@ -58,7 +58,7 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header vert
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
@@ -96,7 +96,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Barre de recherche dans le header
+
                   Row(
                     children: [
                       Expanded(
@@ -143,7 +143,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // Contenu
+
             Expanded(child: _buildContent()),
           ],
         ),

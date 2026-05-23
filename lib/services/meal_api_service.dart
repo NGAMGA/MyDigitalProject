@@ -15,7 +15,7 @@ class MealApiService {
     ));
   }
 
-  /// Recherche par nom
+
   Future<List<Meal>> searchMeals(String query) async {
     try {
       final response = await _dio.get('/search.php', queryParameters: {'s': query});
@@ -27,7 +27,7 @@ class MealApiService {
     }
   }
 
-  /// Détail d'une recette par ID
+
   Future<Meal?> getMealDetail(String id) async {
     try {
       final response = await _dio.get('/lookup.php', queryParameters: {'i': id});
@@ -39,7 +39,7 @@ class MealApiService {
     }
   }
 
-  /// Plats par région/culture (ex: French, Japanese, Moroccan...)
+
   Future<List<Meal>> getMealsByArea(String area) async {
     try {
       final response = await _dio.get('/filter.php', queryParameters: {'a': area});
@@ -51,7 +51,7 @@ class MealApiService {
     }
   }
 
-  /// Liste de toutes les régions disponibles
+
   Future<List<String>> getAllAreas() async {
     try {
       final response = await _dio.get('/list.php', queryParameters: {'a': 'list'});
