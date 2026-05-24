@@ -64,7 +64,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       _selectedLang = targetLang;
     });
 
-    // Si on revient à l'anglais (langue source), pas besoin de traduire
+
     if (targetLang == 'en') {
       setState(() {
         _translatedInstructions = _meal!.instructions;
@@ -276,7 +276,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // AppBar avec image
+
           SliverAppBar(
             expandedHeight: 310,
             pinned: true,
@@ -335,7 +335,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                           },
                         )
                       : Container(color: const Color(0xFFE8F5EE)),
-                  // Dégradé bas
+
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -360,7 +360,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tags région + catégorie
+
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,

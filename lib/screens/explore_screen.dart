@@ -158,7 +158,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     style: TextStyle(fontSize: 13, color: Colors.white70),
                   ),
                   const SizedBox(height: 16),
-                  // Filtres par grande région
+                  // Filtre par grande région
                   SizedBox(
                     height: 38,
                     child: ListView(
