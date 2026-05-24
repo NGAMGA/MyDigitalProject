@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/meal_api_service.dart';
 import '../models/meal.dart';
@@ -19,12 +20,30 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _hasSearched = false;
+
+
+  Timer? _debounceTimer;
+
   final List<String> _quickSearches = const [
     'Pasta',
     'Chicken',
     'Sushi',
     'Vegan',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _searchController.addListener(() {
+      if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+      _debounceTimer = Timer(const Duration(milliseconds: 600), () {
+        if (_searchController.text.trim().isNotEmpty) {
+          _search();
+        }
+      });
+    });
+  }
 
   Future<void> _search() async {
     final query = _searchController.text.trim();
@@ -52,6 +71,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -126,7 +146,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             filled: true,
                             fillColor: Colors.white,
                             contentPadding:
-                                const EdgeInsets.symmetric(vertical: 13),
+                            const EdgeInsets.symmetric(vertical: 13),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
                               borderSide: BorderSide.none,
@@ -244,7 +264,8 @@ class _SearchScreenState extends State<SearchScreen> {
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF757575), fontSize: 15),
+                style:
+                const TextStyle(color: Color(0xFF757575), fontSize: 15),
               ),
               const SizedBox(height: 20),
               OutlinedButton(
@@ -275,8 +296,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 color: const Color(0xFFE8F5EE),
                 borderRadius: BorderRadius.circular(45),
               ),
-              child:
-                  const Icon(Icons.search, size: 48, color: Color(0xFF4CAF7D)),
+              child: const Icon(Icons.search,
+                  size: 48, color: Color(0xFF4CAF7D)),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -290,8 +311,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Pasta, Chicken, Sushi...',
+              'La recherche se lance automatiquement\napres votre saisie',
               style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -308,7 +330,8 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'Aucune recette trouvee\npour "${_searchController.text}"',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF757575), fontSize: 15),
+              style:
+              const TextStyle(color: Color(0xFF757575), fontSize: 15),
             ),
           ],
         ),
@@ -335,14 +358,28 @@ class _SearchScreenState extends State<SearchScreen> {
             itemCount: _results.length,
             itemBuilder: (context, index) {
               final meal = _results[index];
-              return MealCard(
-                meal: meal,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MealDetailScreen(
-                      mealId: meal.id,
-                      mealName: meal.name,
+
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: Duration(milliseconds: 300 + (index * 60)),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                      offset: Offset(0, 20 * (1 - value)),
+                      child: child,
+                    ),
+                  );
+                },
+                child: MealCard(
+                  meal: meal,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MealDetailScreen(
+                        mealId: meal.id,
+                        mealName: meal.name,
+                      ),
                     ),
                   ),
                 ),
@@ -354,3 +391,4 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 }
+
