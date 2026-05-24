@@ -54,6 +54,36 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     }
   }
 
+  String _buildDescription(Meal meal) {
+    final parts = <String>[];
+    if (meal.area != null) parts.add('Originaire de la cuisine ${meal.area}');
+    if (meal.category != null) parts.add('catégorie ${meal.category}');
+    if (meal.tags != null && meal.tags!.isNotEmpty) {
+      final tags = meal.tags!.split(',').take(3).map((t) => t.trim()).join(', ');
+      parts.add('tags : $tags');
+    }
+    if (parts.isEmpty) {
+      return 'Un délicieux plat composé de ${meal.ingredients.length} ingrédients.';
+    }
+    return '${parts.join(', ')}. Ce plat nécessite ${meal.ingredients.length} ingrédients.';
+  }
+
+  double _complexityValue(int count) {
+    if (count <= 5) return 2.0;
+    if (count <= 8) return 3.0;
+    if (count <= 12) return 3.5;
+    if (count <= 16) return 4.0;
+    return 5.0;
+  }
+
+  String _complexityLabel(int count) {
+    if (count <= 5) return 'Facile';
+    if (count <= 8) return 'Moyen';
+    if (count <= 12) return 'Élaboré';
+    if (count <= 16) return 'Avancé';
+    return 'Complexe';
+  }
+
   Future<void> _translate(String targetLang) async {
     if (_meal?.instructions == null) return;
     if (targetLang == _selectedLang) return;
@@ -63,7 +93,6 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       _translationError = null;
       _selectedLang = targetLang;
     });
-
 
     if (targetLang == 'en') {
       setState(() {
@@ -143,8 +172,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                   title: Text(
                     entry.value,
                     style: TextStyle(
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       color: colorScheme.onSurface,
                     ),
                   ),
@@ -176,7 +204,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
 
   List<String> _stepsFromText(String text) {
     final normalized =
-        text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
     if (normalized.isEmpty) return [];
 
     final stepMatches = RegExp(
@@ -194,9 +222,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         .split('\n')
         .map((step) => step.trim())
         .where((step) =>
-            step.isNotEmpty &&
-            !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+', caseSensitive: false)
-                .hasMatch(step))
+    step.isNotEmpty &&
+        !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+', caseSensitive: false)
+            .hasMatch(step))
         .toList();
     if (byLine.length > 1) return byLine;
 
@@ -204,9 +232,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         .split(RegExp(r'(?<=[.!?])\s+'))
         .map((step) => step.trim())
         .where((step) =>
-            step.length > 3 &&
-            !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+$', caseSensitive: false)
-                .hasMatch(step))
+    step.length > 3 &&
+        !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+$', caseSensitive: false)
+            .hasMatch(step))
         .toList();
   }
 
@@ -272,11 +300,14 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     final meal = _meal!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final complexity = _complexityValue(meal.ingredients.length);
+    final complexityLabel = _complexityLabel(meal.ingredients.length);
+    final description = _buildDescription(meal);
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-
           SliverAppBar(
             expandedHeight: 310,
             pinned: true,
@@ -325,17 +356,16 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                 children: [
                   meal.thumbnail != null
                       ? CachedNetworkImage(
-                          imageUrl: meal.thumbnail!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) {
-                            return Container(color: const Color(0xFFE8F5EE));
-                          },
-                          errorWidget: (context, url, error) {
-                            return Container(color: const Color(0xFFE8F5EE));
-                          },
-                        )
+                    imageUrl: meal.thumbnail!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) {
+                      return Container(color: const Color(0xFFE8F5EE));
+                    },
+                    errorWidget: (context, url, error) {
+                      return Container(color: const Color(0xFFE8F5EE));
+                    },
+                  )
                       : Container(color: const Color(0xFFE8F5EE)),
-
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -353,14 +383,12 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
               ),
             ),
           ),
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
@@ -370,24 +398,81 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                         _tag(Icons.category_outlined, meal.category!),
                     ],
                   ),
-                  const SizedBox(height: 24),
-
-                  // Ingrédients
-                  _sectionTitle('Ingredients'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: _softCardDecoration(theme, colorScheme),
+                    child: Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface,
+                        height: 1.6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorScheme.primary.withValues(alpha: 0.08),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                    decoration: _softCardDecoration(theme, colorScheme),
+                    child: Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: List.generate(5, (i) {
+                                return Icon(
+                                  i < complexity.floor()
+                                      ? Icons.star_rounded
+                                      : (i < complexity
+                                      ? Icons.star_half_rounded
+                                      : Icons.star_outline_rounded),
+                                  color: const Color(0xFFFFB800),
+                                  size: 26,
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              complexityLabel,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Column(
+                          children: [
+                            Text(
+                              complexity.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                                fontFamily: 'Georgia',
+                              ),
+                            ),
+                            Text(
+                              '/ 5.0',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: _softCardDecoration(theme, colorScheme),
                     child: Column(
                       children: List.generate(meal.ingredients.length, (i) {
                         return Padding(
@@ -420,15 +505,11 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                       }),
                     ),
                   ),
-                  const SizedBox(height: 28),
-
-                  // Instructions avec bouton traduction
+                  const SizedBox(height: 24),
                   if (meal.instructions != null) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _sectionTitle('Instructions'),
-                        // Bouton traduction
                         GestureDetector(
                           onTap: _showLanguagePicker,
                           child: Container(
@@ -459,8 +540,6 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // Contenu instructions
                     _buildInstructionsCard(theme, colorScheme, meal),
                   ],
                   const SizedBox(height: 40),
@@ -500,10 +579,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   }
 
   Widget _buildInstructionsCard(
-    ThemeData theme,
-    ColorScheme colorScheme,
-    Meal meal,
-  ) {
+      ThemeData theme,
+      ColorScheme colorScheme,
+      Meal meal,
+      ) {
     if (_isTranslating) {
       return Container(
         width: double.infinity,
@@ -603,28 +682,13 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     return BoxDecoration(
       color: theme.cardColor,
       borderRadius: BorderRadius.circular(18),
-      border:
-          Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
       boxShadow: [
         BoxShadow(
-          color: colorScheme.shadow.withValues(alpha: 0.06),
-          blurRadius: 14,
-          offset: const Offset(0, 5),
+          color: colorScheme.primary.withValues(alpha: 0.08),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
         ),
       ],
-    );
-  }
-
-  Widget _sectionTitle(String title) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Text(
-      title,
-      style: TextStyle(
-        fontFamily: 'Georgia',
-        fontSize: 19,
-        fontWeight: FontWeight.bold,
-        color: colorScheme.onSurface,
-      ),
     );
   }
 }
