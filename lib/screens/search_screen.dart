@@ -1,47 +1,50 @@
 import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import '../services/meal_api_service.dart';
+import 'package:provider/provider.dart';
+
 import '../models/meal.dart';
-import '../widgets/meal_card.dart';
+import '../providers/favorites_provider.dart';
+import '../services/meal_api_service.dart';
 import 'meal_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.onBack});
+
+  final VoidCallback? onBack;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  final MealApiService _apiService = MealApiService();
+  final _searchController = TextEditingController(text: 'Chicken');
+  final _apiService = MealApiService();
 
-  List<Meal> _results = [];
-  bool _isLoading = false;
+  List<Meal> _results = const [];
+  int _currentIndex = 0;
+  bool _isLoading = true;
   String? _errorMessage;
-  bool _hasSearched = false;
-
-
   Timer? _debounceTimer;
 
-  final List<String> _quickSearches = const [
-    'Pasta',
-    'Chicken',
-    'Sushi',
-    'Vegan',
-  ];
+  Meal? get _currentMeal {
+    if (_results.isEmpty) return null;
+    return _results[_currentIndex.clamp(0, _results.length - 1)];
+  }
 
   @override
   void initState() {
     super.initState();
+    _search();
+    _searchController.addListener(_scheduleSearch);
+  }
 
-    _searchController.addListener(() {
-      if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 600), () {
-        if (_searchController.text.trim().isNotEmpty) {
-          _search();
-        }
-      });
+  void _scheduleSearch() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 650), () {
+      final query = _searchController.text.trim();
+      if (query.isNotEmpty) _search();
     });
   }
 
@@ -52,16 +55,18 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _hasSearched = true;
     });
 
     try {
       final results = await _apiService.searchMeals(query);
+      if (!mounted) return;
       setState(() {
         _results = results;
+        _currentIndex = 0;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -69,326 +74,468 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  void _goToNextMeal() {
+    if (_results.isEmpty) return;
+    setState(() {
+      _currentIndex = (_currentIndex + 1) % _results.length;
+    });
+  }
+
+  void _saveAndNext() {
+    final meal = _currentMeal;
+    if (meal == null) return;
+    context.read<FavoritesProvider>().addFavorite(meal);
+    _goToNextMeal();
+  }
+
+  void _skipAndNext() {
+    final meal = _currentMeal;
+    if (meal == null) return;
+    context.read<FavoritesProvider>().removeFavorite(meal.id);
+    _goToNextMeal();
+  }
+
+  void _openDetail() {
+    final meal = _currentMeal;
+    if (meal == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MealDetailScreen(
+          mealId: meal.id,
+          mealName: meal.name,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _searchController.removeListener(_scheduleSearch);
     _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-              decoration: BoxDecoration(
-                color: colorScheme.primary,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(9, 18, 9, 88),
+          child: Column(
+            children: [
+              _SearchHeader(onBack: widget.onBack),
+              const SizedBox(height: 20),
+              _SearchField(
+                controller: _searchController,
+                onSubmitted: _search,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.restaurant_menu,
-                            color: Colors.white, size: 22),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Meal Explorer',
-                        style: TextStyle(
-                          fontFamily: 'Georgia',
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Trouvez une recette, explorez les cuisines et gardez vos favoris.',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onSubmitted: (_) => _search(),
-                          style: const TextStyle(
-                              color: Color(0xFF1A3A2A), fontSize: 15),
-                          decoration: InputDecoration(
-                            hintText: 'Pasta, Chicken, Sushi...',
-                            hintStyle: TextStyle(
-                                color: Colors.grey[400], fontSize: 14),
-                            prefixIcon: Icon(Icons.search,
-                                color: colorScheme.primary, size: 22),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding:
-                            const EdgeInsets.symmetric(vertical: 13),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: _search,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1F6B45),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.arrow_forward_rounded,
-                              color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 34,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _quickSearches.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final query = _quickSearches[index];
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(999),
-                          onTap: () {
-                            _searchController.text = query;
-                            _search();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.14)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.38),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.restaurant,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF145C39),
-                                  size: 15,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  query,
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF145C39),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(child: _buildContent()),
-          ],
+              const SizedBox(height: 26),
+              Expanded(child: _buildBody()),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF4CAF7D)),
+        child: CircularProgressIndicator(
+          color: Color(0xFF062F1A),
+          strokeWidth: 2,
+        ),
       );
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.wifi_off_rounded,
-                  size: 56, color: Color(0xFFBDBDBD)),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style:
-                const TextStyle(color: Color(0xFF757575), fontSize: 15),
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton(
-                onPressed: _search,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF4CAF7D),
-                  side: const BorderSide(color: Color(0xFF4CAF7D)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Reessayer'),
-              ),
-            ],
-          ),
-        ),
+      return _SearchMessage(
+        icon: Icons.wifi_off_rounded,
+        title: 'Recherche impossible',
+        message: _errorMessage!,
+        action: _search,
       );
     }
 
-    if (!_hasSearched) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5EE),
-                borderRadius: BorderRadius.circular(45),
-              ),
-              child: const Icon(Icons.search,
-                  size: 48, color: Color(0xFF4CAF7D)),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Recherchez une recette',
-              style: TextStyle(
-                fontFamily: 'Georgia',
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A3A2A),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'La recherche se lance automatiquement\napres votre saisie',
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+    final meal = _currentMeal;
+    if (meal == null) {
+      return _SearchMessage(
+        icon: Icons.no_food_rounded,
+        title: 'Aucune recette',
+        message: 'Essaie une autre recherche.',
+        action: _search,
       );
     }
 
-    if (_results.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.no_food, size: 56, color: Color(0xFFBDBDBD)),
-            const SizedBox(height: 16),
-            Text(
-              'Aucune recette trouvee\npour "${_searchController.text}"',
-              textAlign: TextAlign.center,
-              style:
-              const TextStyle(color: Color(0xFF757575), fontSize: 15),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-          child: Text(
-            '${_results.length} recette${_results.length > 1 ? 's' : ''} trouvee${_results.length > 1 ? 's' : ''}',
-            style: const TextStyle(
-              color: Color(0xFF4CAF7D),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 20, top: 8),
-            itemCount: _results.length,
-            itemBuilder: (context, index) {
-              final meal = _results[index];
-
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: Duration(milliseconds: 300 + (index * 60)),
-                builder: (context, value, child) {
-                  return Opacity(
-                    opacity: value,
-                    child: Transform.translate(
-                      offset: Offset(0, 20 * (1 - value)),
-                      child: child,
-                    ),
-                  );
-                },
-                child: MealCard(
-                  meal: meal,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MealDetailScreen(
-                        mealId: meal.id,
-                        mealName: meal.name,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+    return _FeaturedMealCard(
+      meal: meal,
+      currentIndex: _currentIndex,
+      total: _results.length,
+      onSkip: _skipAndNext,
+      onSave: _saveAndNext,
+      onOpenDetail: _openDetail,
     );
   }
 }
 
+class _SearchHeader extends StatelessWidget {
+  const _SearchHeader({required this.onBack});
+
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 32,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: onBack ?? () => Navigator.maybePop(context),
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.arrow_back_rounded, size: 25),
+            ),
+          ),
+          const Text(
+            'Recherche',
+            style: TextStyle(
+              color: Color(0xFF202020),
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      textAlign: TextAlign.center,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (_) => onSubmitted(),
+      cursorColor: const Color(0xFF062F1A),
+      decoration: InputDecoration(
+        hintText: 'Rechercher',
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(999),
+          borderSide: const BorderSide(color: Color(0xFF202020), width: 1.7),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(999),
+          borderSide: const BorderSide(color: Color(0xFF062F1A), width: 2),
+        ),
+      ),
+      style: const TextStyle(
+        color: Color(0xFF202020),
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+      ),
+    );
+  }
+}
+
+class _FeaturedMealCard extends StatelessWidget {
+  const _FeaturedMealCard({
+    required this.meal,
+    required this.currentIndex,
+    required this.total,
+    required this.onSkip,
+    required this.onSave,
+    required this.onOpenDetail,
+  });
+
+  final Meal meal;
+  final int currentIndex;
+  final int total;
+  final VoidCallback onSkip;
+  final VoidCallback onSave;
+  final VoidCallback onOpenDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          onHorizontalDragEnd: (details) {
+            final velocity = details.primaryVelocity ?? 0;
+            if (velocity > 180) {
+              onSave();
+            } else if (velocity < -180) {
+              onSkip();
+            }
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: onOpenDetail,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: CachedNetworkImage(
+                      imageUrl: meal.thumbnail ?? '',
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        color: const Color(0xFFEAF5D6),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF062F1A),
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        color: const Color(0xFFEAF5D6),
+                        child: const Icon(
+                          Icons.restaurant_rounded,
+                          color: Color(0xFF062F1A),
+                          size: 46,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: _RoundAction(
+                  icon: Icons.receipt_long_outlined,
+                  onTap: onOpenDetail,
+                  size: 52,
+                  iconSize: 28,
+                  backgroundColor: Colors.white.withOpacity(0.92),
+                ),
+              ),
+              Positioned(
+                left: 17,
+                right: 17,
+                bottom: 18,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _NavCluster(
+                      leadingIcon: Icons.arrow_back_rounded,
+                      trailingIcon: Icons.close_rounded,
+                      onLeading: onSkip,
+                      onTrailing: onSkip,
+                    ),
+                    _NavCluster(
+                      leadingIcon: Icons.receipt_long_outlined,
+                      trailingIcon: Icons.arrow_forward_rounded,
+                      onLeading: onOpenDetail,
+                      onTrailing: onSave,
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 84,
+                child: _MealCaption(
+                  meal: meal,
+                  currentIndex: currentIndex,
+                  total: total,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MealCaption extends StatelessWidget {
+  const _MealCaption({
+    required this.meal,
+    required this.currentIndex,
+    required this.total,
+  });
+
+  final Meal meal;
+  final int currentIndex;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.26),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                meal.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Text(
+              '${currentIndex + 1}/$total',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavCluster extends StatelessWidget {
+  const _NavCluster({
+    required this.leadingIcon,
+    required this.trailingIcon,
+    required this.onLeading,
+    required this.onTrailing,
+  });
+
+  final IconData leadingIcon;
+  final IconData trailingIcon;
+  final VoidCallback onLeading;
+  final VoidCallback onTrailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.82),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _RoundAction(
+            icon: leadingIcon,
+            onTap: onLeading,
+            size: 40,
+            iconSize: 28,
+            backgroundColor: Colors.transparent,
+          ),
+          _RoundAction(
+            icon: trailingIcon,
+            onTap: onTrailing,
+            size: 40,
+            iconSize: 28,
+            backgroundColor: const Color(0xFF062F1A),
+            foregroundColor: const Color(0xFFDDF577),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({
+    required this.icon,
+    required this.onTap,
+    required this.size,
+    required this.iconSize,
+    required this.backgroundColor,
+    this.foregroundColor = const Color(0xFF062F1A),
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  final double iconSize;
+  final Color backgroundColor;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: foregroundColor, size: iconSize),
+      ),
+    );
+  }
+}
+
+class _SearchMessage extends StatelessWidget {
+  const _SearchMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final VoidCallback action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 46, color: const Color(0xFF062F1A)),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF6F6F6F)),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton(
+            onPressed: action,
+            child: const Text('Reessayer'),
+          ),
+        ],
+      ),
+    );
+  }
+}

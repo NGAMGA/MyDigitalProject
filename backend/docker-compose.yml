@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: komi-postgres
+    environment:
+      POSTGRES_DB: komi
+      POSTGRES_USER: komi
+      POSTGRES_PASSWORD: komi
+    ports:
+      - "5432:5432"
+    volumes:
+      - komi_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U komi -d komi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: komi-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://komi:komi@db:5432/komi
+      JWT_SECRET_KEY: change-this-secret-in-local-dev
+      JWT_EXPIRE_MINUTES: 1440
+      CORS_ORIGINS: "*"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  komi_pg_data:
