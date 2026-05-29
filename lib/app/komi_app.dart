@@ -1,30 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../features/auth/splash_page.dart';
 import '../features/home/home_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/recipes/recipes_page.dart';
 import '../features/scan/scan_page.dart';
+import '../providers/favorites_provider.dart';
 
 class KomiApp extends StatelessWidget {
   const KomiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Komi',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF062F1A),
-          primary: const Color(0xFF062F1A),
-          secondary: const Color(0xFFDDF577),
-          surface: Colors.white,
+    return ChangeNotifierProvider(
+      create: (_) => FavoritesProvider(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Komi',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF062F1A),
+            primary: const Color(0xFF062F1A),
+            secondary: const Color(0xFFDDF577),
+            surface: Colors.white,
+          ),
+          scaffoldBackgroundColor: Colors.white,
+          useMaterial3: true,
         ),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
+        home: const SplashPage(),
       ),
-      home: const SplashPage(),
     );
   }
 }
