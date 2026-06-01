@@ -27,12 +27,10 @@ class _SplashPageState extends State<SplashPage>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..forward();
-    _scale = Tween<double>(begin: 0.94, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+      duration: Duration.zero,
+    )..value = 1;
+    _scale = const AlwaysStoppedAnimation<double>(1);
+    _fade = const AlwaysStoppedAnimation<double>(1);
 
     _navigationTimer = Timer(
       const Duration(milliseconds: 1400),

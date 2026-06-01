@@ -71,6 +71,8 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -149,10 +151,17 @@ class _LoginPageState extends State<LoginPage> {
                   left: horizontalPadding,
                   right: horizontalPadding,
                   bottom: 18,
-                  child: _CreateAccountFooter(
-                    onPressed: () => Navigator.of(context).pushReplacement(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SignUpPage(),
+                  child: IgnorePointer(
+                    ignoring: isKeyboardOpen,
+                    child: AnimatedOpacity(
+                      opacity: isKeyboardOpen ? 0 : 1,
+                      duration: const Duration(milliseconds: 140),
+                      child: _CreateAccountFooter(
+                        onPressed: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SignUpPage(),
+                          ),
+                        ),
                       ),
                     ),
                   ),

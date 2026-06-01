@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../models/shopping_product.dart';
 
 class ShoppingListProvider extends ChangeNotifier {
-  final List<ShoppingProduct> _products = [
-    const ShoppingProduct(
+  final List<ShoppingProduct> _products = [];
+
+  static const List<ShoppingProduct> _catalog = [
+    ShoppingProduct(
       id: '3017620422003',
       name: 'Pain complet',
       brand: 'Komi Market',
@@ -19,11 +21,11 @@ class ShoppingListProvider extends ChangeNotifier {
       salt: 1.1,
       nutriScore: 'A',
     ),
-    const ShoppingProduct(
+    ShoppingProduct(
       id: '3274080005003',
       name: 'Yaourt nature',
       brand: 'Ferme locale',
-      quantity: 4,
+      quantity: 1,
       imageUrl:
           'https://images.unsplash.com/photo-1571212515416-fef01fc43637?auto=format&fit=crop&w=300&q=80',
       energyKcal: 62,
@@ -34,11 +36,11 @@ class ShoppingListProvider extends ChangeNotifier {
       salt: 0.12,
       nutriScore: 'B',
     ),
-    const ShoppingProduct(
+    ShoppingProduct(
       id: '3560070478786',
       name: 'Filets de poulet',
       brand: 'Carrefour',
-      quantity: 2,
+      quantity: 1,
       imageUrl:
           'https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=300&q=80',
       energyKcal: 121,
@@ -49,7 +51,7 @@ class ShoppingListProvider extends ChangeNotifier {
       salt: 0.18,
       nutriScore: 'A',
     ),
-    const ShoppingProduct(
+    ShoppingProduct(
       id: '3045320501015',
       name: 'Pates semi-completes',
       brand: 'Bjorg',
@@ -64,7 +66,7 @@ class ShoppingListProvider extends ChangeNotifier {
       salt: 0.03,
       nutriScore: 'A',
     ),
-    const ShoppingProduct(
+    ShoppingProduct(
       id: '5449000000996',
       name: 'Soda cola',
       brand: 'Coca-Cola',
@@ -79,6 +81,51 @@ class ShoppingListProvider extends ChangeNotifier {
       salt: 0,
       nutriScore: 'E',
     ),
+    ShoppingProduct(
+      id: '3045140105506',
+      name: 'Tomates',
+      brand: 'Marche frais',
+      quantity: 1,
+      imageUrl:
+          'https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=300&q=80',
+      energyKcal: 18,
+      proteins: 0.9,
+      fibers: 1.2,
+      fat: 0.2,
+      sugars: 2.6,
+      salt: 0.01,
+      nutriScore: 'A',
+    ),
+    ShoppingProduct(
+      id: '3222475920455',
+      name: 'Riz basmati',
+      brand: 'Taureau Aile',
+      quantity: 1,
+      imageUrl:
+          'https://images.unsplash.com/photo-1586201375761-83865001e31d?auto=format&fit=crop&w=300&q=80',
+      energyKcal: 356,
+      proteins: 7.5,
+      fibers: 1.1,
+      fat: 0.8,
+      sugars: 0.2,
+      salt: 0.01,
+      nutriScore: 'B',
+    ),
+    ShoppingProduct(
+      id: '7622210449283',
+      name: 'Avocat',
+      brand: 'Primeur',
+      quantity: 1,
+      imageUrl:
+          'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=300&q=80',
+      energyKcal: 160,
+      proteins: 2.0,
+      fibers: 6.7,
+      fat: 14.7,
+      sugars: 0.7,
+      salt: 0.01,
+      nutriScore: 'B',
+    ),
   ];
 
   List<ShoppingProduct> get products => List.unmodifiable(_products);
@@ -87,6 +134,85 @@ class ShoppingListProvider extends ChangeNotifier {
 
   int get productCount =>
       _products.fold(0, (sum, product) => sum + product.quantity);
+
+  int addRecognizedProducts(Iterable<String> names) {
+    var addedCount = 0;
+    for (final name in names) {
+      if (addManualProduct(name, notify: false)) {
+        addedCount++;
+      }
+    }
+
+    if (addedCount > 0) {
+      notifyListeners();
+    }
+    return addedCount;
+  }
+
+  bool addManualProduct(String query, {bool notify = true}) {
+    final normalizedQuery = _normalize(query);
+    if (normalizedQuery.isEmpty) return false;
+
+    final catalogMatch = _catalog.cast<ShoppingProduct?>().firstWhere(
+      (product) {
+        final name = _normalize(product!.name);
+        final brand = _normalize(product.brand);
+        return name.contains(normalizedQuery) ||
+            normalizedQuery.contains(name) ||
+            brand.contains(normalizedQuery);
+      },
+      orElse: () => null,
+    );
+
+    final existingIndex = _products.indexWhere(
+      (product) => _normalize(product.name) == normalizedQuery,
+    );
+
+    if (existingIndex >= 0) {
+      final current = _products[existingIndex];
+      _products[existingIndex] = ShoppingProduct(
+        id: current.id,
+        name: current.name,
+        brand: current.brand,
+        quantity: current.quantity + 1,
+        imageUrl: current.imageUrl,
+        energyKcal: current.energyKcal,
+        proteins: current.proteins,
+        fibers: current.fibers,
+        fat: current.fat,
+        sugars: current.sugars,
+        salt: current.salt,
+        nutriScore: current.nutriScore,
+      );
+      if (notify) {
+        notifyListeners();
+      }
+      return true;
+    }
+
+    final product = catalogMatch ?? _buildGenericProduct(query);
+    _products.insert(
+      0,
+      ShoppingProduct(
+        id: product.id,
+        name: _capitalize(query.trim()),
+        brand: product.brand,
+        quantity: 1,
+        imageUrl: product.imageUrl,
+        energyKcal: product.energyKcal,
+        proteins: product.proteins,
+        fibers: product.fibers,
+        fat: product.fat,
+        sugars: product.sugars,
+        salt: product.salt,
+        nutriScore: product.nutriScore,
+      ),
+    );
+    if (notify) {
+      notifyListeners();
+    }
+    return true;
+  }
 
   ShoppingNutritionSummary get summary {
     final proteins =
@@ -104,7 +230,7 @@ class ShoppingListProvider extends ChangeNotifier {
 
     return ShoppingNutritionSummary(
       score: score,
-      label: _scoreLabel(score),
+      label: _products.isEmpty ? 'A completer' : _scoreLabel(score),
       proteins: proteins,
       fibers: fibers,
       fat: fat,
@@ -137,5 +263,32 @@ class ShoppingListProvider extends ChangeNotifier {
     if (score >= 65) return 'Plutot bien';
     if (score >= 45) return 'A surveiller';
     return 'A ameliorer';
+  }
+
+  ShoppingProduct _buildGenericProduct(String query) {
+    return ShoppingProduct(
+      id: 'manual-${DateTime.now().microsecondsSinceEpoch}',
+      name: _capitalize(query.trim()),
+      brand: 'A completer',
+      quantity: 1,
+      imageUrl:
+          'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80',
+      energyKcal: 0,
+      proteins: 0,
+      fibers: 0,
+      fat: 0,
+      sugars: 0,
+      salt: 0,
+      nutriScore: '-',
+    );
+  }
+
+  String _normalize(String value) {
+    return value.trim().toLowerCase();
+  }
+
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
   }
 }

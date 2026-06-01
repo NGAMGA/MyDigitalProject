@@ -37,6 +37,11 @@ class AuthSessionStore {
     return KomiUser.fromJson(decoded);
   }
 
+  Future<void> updateUser(KomiUser user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userKey, jsonEncode(user.toJson()));
+  }
+
   Future<bool> hasValidSession() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);

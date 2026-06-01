@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/shopping_product.dart';
+import '../../models/shopping_list_analysis.dart';
 import '../../providers/shopping_list_provider.dart';
+import '../../services/shopping_list_ocr_service.dart';
 
-class ScanPage extends StatelessWidget {
+class ScanPage extends StatefulWidget {
   const ScanPage({super.key, this.onBack});
 
   final VoidCallback? onBack;
 
-  static const _recentLists = [
-    'Liste du 13/04/26',
-    'Liste du 03/04/26',
-    'Liste du 23/03/26',
-    'Liste du 13/03/26',
-  ];
+  @override
+  State<ScanPage> createState() => _ScanPageState();
+}
+
+class _ScanPageState extends State<ScanPage> {
+  final TextEditingController _manualItemController = TextEditingController();
+  final FocusNode _manualItemFocusNode = FocusNode();
+  final ImagePicker _imagePicker = ImagePicker();
+  final ShoppingListOcrService _ocrService = ShoppingListOcrService();
+
+  ShoppingListAnalysisResult? _lastAnalysis;
+  bool _isAnalyzing = false;
+  bool _isValidatingManualItem = false;
+
+  static const List<String> _recentLists = [];
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +39,7 @@ class ScanPage extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            _ShoppingHeader(onBack: onBack),
+            _ShoppingHeader(onBack: widget.onBack),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 104),
@@ -35,12 +47,33 @@ class ScanPage extends StatelessWidget {
                   const SizedBox(height: 6),
                   const _RecipePagerLabel(),
                   const SizedBox(height: 18),
-                  _ImportActions(onComingSoon: _showComingSoon),
-                  const SizedBox(height: 16),
-                  for (final product in products) ...[
-                    _ProductListRow(product: product),
-                    const Divider(height: 1, color: Color(0xFFD9D9D9)),
+                  _ImportActions(
+                    controller: _manualItemController,
+                    focusNode: _manualItemFocusNode,
+                    onSubmitted: _handleManualItemSubmit,
+                    onOpenManual: _openManualEntry,
+                    onPickCamera: () => _pickAndAnalyze(ImageSource.camera),
+                    onPickGallery: () => _pickAndAnalyze(ImageSource.gallery),
+                  ),
+                  if (_isAnalyzing) ...[
+                    const SizedBox(height: 14),
+                    const LinearProgressIndicator(
+                      color: Color(0xFF062F1A),
+                      backgroundColor: Color(0xFFE8E8E8),
+                    ),
                   ],
+                  if (_lastAnalysis != null) ...[
+                    const SizedBox(height: 14),
+                    _AnalysisSummaryCard(result: _lastAnalysis!),
+                  ],
+                  const SizedBox(height: 16),
+                  if (products.isEmpty)
+                    const _EmptyListState()
+                  else
+                    for (final product in products) ...[
+                      _ProductListRow(product: product),
+                      const Divider(height: 1, color: Color(0xFFD9D9D9)),
+                    ],
                   const SizedBox(height: 18),
                   const Text(
                     'listes recentes',
@@ -51,10 +84,13 @@ class ScanPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  for (final list in _recentLists) ...[
-                    _RecentListRow(title: list),
-                    const Divider(height: 1, color: Color(0xFFD9D9D9)),
-                  ],
+                  if (_recentLists.isEmpty)
+                    const _EmptyRecentListsState()
+                  else
+                    for (final list in _recentLists) ...[
+                      _RecentListRow(title: list),
+                      const Divider(height: 1, color: Color(0xFFD9D9D9)),
+                    ],
                 ],
               ),
             ),
@@ -64,9 +100,159 @@ class ScanPage extends StatelessWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context, String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$action bientot disponible.')),
+  @override
+  void dispose() {
+    _manualItemController.dispose();
+    _manualItemFocusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleManualItemSubmit(BuildContext context) async {
+    final query = _manualItemController.text.trim();
+    final messenger = ScaffoldMessenger.of(context);
+    final shoppingListProvider = context.read<ShoppingListProvider>();
+
+    if (query.isEmpty || _isValidatingManualItem) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Ecris un item a ajouter a la liste.')),
+      );
+      return;
+    }
+
+    setState(() => _isValidatingManualItem = true);
+    try {
+      final result = await _ocrService.validateItems([query]);
+      if (!mounted) return;
+      setState(() {
+        _lastAnalysis = result;
+        _isValidatingManualItem = false;
+      });
+
+      if (result.items.isEmpty) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('"$query" ignore : ce n est pas un aliment.')),
+        );
+        return;
+      }
+
+      final added =
+          shoppingListProvider.addManualProduct(result.items.first.name);
+      if (!added) return;
+
+      _manualItemController.clear();
+      _manualItemFocusNode.unfocus();
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text('"${result.items.first.name}" ajoute a la liste.')),
+      );
+    } on ShoppingListOcrException catch (error) {
+      if (!mounted) return;
+      setState(() => _isValidatingManualItem = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
+
+  void _openManualEntry(BuildContext context) {
+    _manualItemFocusNode.requestFocus();
+  }
+
+  Future<void> _pickAndAnalyze(ImageSource source) async {
+    if (_isAnalyzing) return;
+    final shoppingListProvider = context.read<ShoppingListProvider>();
+
+    try {
+      final file = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 2200,
+      );
+      if (file == null) return;
+
+      setState(() => _isAnalyzing = true);
+      final bytes = await file.readAsBytes();
+      final result = await _ocrService.analyzeImage(
+        bytes: bytes,
+        filename: file.name,
+        source: source == ImageSource.camera ? 'camera' : 'gallery',
+      );
+
+      final addedCount = shoppingListProvider.addRecognizedProducts(
+        result.items.map((item) => item.name),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _lastAnalysis = result;
+        _isAnalyzing = false;
+      });
+
+      final extractedCount = result.items.length;
+      final rejectedCount = result.rejectedItems.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$extractedCount aliment${extractedCount > 1 ? 's' : ''} ajoute${addedCount > 1 ? 's' : ''}, $rejectedCount ignore${rejectedCount > 1 ? 's' : ''}.',
+          ),
+        ),
+      );
+    } on ShoppingListOcrException catch (error) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible d ouvrir ou d analyser cette image.'),
+        ),
+      );
+    }
+  }
+}
+
+class _EmptyListState extends StatelessWidget {
+  const _EmptyListState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'Aucun item pour le moment. Prends une photo de ta liste, importe une image ou ajoute un item manuellement.',
+        style: TextStyle(
+          color: Color(0xFF4A4A4A),
+          fontSize: 12,
+          height: 1.25,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyRecentListsState extends StatelessWidget {
+  const _EmptyRecentListsState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        'Aucune liste recente pour ce compte.',
+        style: TextStyle(
+          color: Color(0xFF6B6B6B),
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }
@@ -121,7 +307,7 @@ class _RecipePagerLabel extends StatelessWidget {
     return const Column(
       children: [
         Text(
-          'Produits',
+          'Items de la liste',
           style: TextStyle(
             color: Color(0xFF202020),
             fontSize: 13,
@@ -161,9 +347,21 @@ class _PagerDot extends StatelessWidget {
 }
 
 class _ImportActions extends StatelessWidget {
-  const _ImportActions({required this.onComingSoon});
+  const _ImportActions({
+    required this.controller,
+    required this.focusNode,
+    required this.onSubmitted,
+    required this.onOpenManual,
+    required this.onPickCamera,
+    required this.onPickGallery,
+  });
 
-  final void Function(BuildContext context, String action) onComingSoon;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final void Function(BuildContext context) onSubmitted;
+  final void Function(BuildContext context) onOpenManual;
+  final VoidCallback onPickCamera;
+  final VoidCallback onPickGallery;
 
   @override
   Widget build(BuildContext context) {
@@ -172,13 +370,13 @@ class _ImportActions extends StatelessWidget {
         Row(
           children: [
             _RoundImportButton(
-              icon: Icons.add_rounded,
-              onTap: () => onComingSoon(context, 'Ajout manuel'),
+              icon: Icons.edit_note_rounded,
+              onTap: () => onOpenManual(context),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton.icon(
-                onPressed: () => onComingSoon(context, 'Photo du ticket'),
+                onPressed: onPickCamera,
                 icon: const Icon(Icons.photo_camera_outlined, size: 18),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFFD0F16C),
@@ -192,18 +390,55 @@ class _ImportActions extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                label: const Text('Prendre en photo un ticket'),
+                label: const Text('Prendre en photo la liste'),
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 9),
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          onSubmitted: (_) => onSubmitted(context),
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            hintText: 'Ecrire un item de ma liste',
+            hintStyle: const TextStyle(
+              color: Color(0xFF7A7A7A),
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+            suffixIcon: IconButton(
+              onPressed: () => onSubmitted(context),
+              icon: const Icon(
+                Icons.add_circle_rounded,
+                color: Color(0xFF062F1A),
+              ),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF3F3F3),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          style: const TextStyle(
+            color: Color(0xFF202020),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 9),
         Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => onComingSoon(context, 'Recherche produit'),
-                icon: const Icon(Icons.search_rounded, size: 16),
+                onPressed: () => onOpenManual(context),
+                icon: const Icon(Icons.keyboard_alt_outlined, size: 16),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF062F1A),
                   side: const BorderSide(color: Color(0xFF062F1A), width: 1),
@@ -216,13 +451,13 @@ class _ImportActions extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                label: const Text('Rechercher un produit'),
+                label: const Text('Ajouter manuellement'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => onComingSoon(context, 'Import photo'),
+                onPressed: onPickGallery,
                 icon: const Icon(Icons.image_outlined, size: 16),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF062F1A),
@@ -236,12 +471,135 @@ class _ImportActions extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                label: const Text('Importer une photo'),
+                label: const Text('Importer la liste'),
               ),
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'On recupere automatiquement l item saisi pour l ajouter a la liste.',
+            style: TextStyle(
+              color: Color(0xFF5C5C5C),
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _AnalysisSummaryCard extends StatelessWidget {
+  const _AnalysisSummaryCard({required this.result});
+
+  final ShoppingListAnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final previewItems = result.items.take(4).toList();
+    final hasAcceptedItems = result.items.isNotEmpty;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7F1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9E5C0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            result.source == 'camera'
+                ? 'Derniere analyse photo'
+                : 'Derniere analyse galerie',
+            style: const TextStyle(
+              color: Color(0xFF202020),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hasAcceptedItems
+                ? '${result.items.length} aliment${result.items.length > 1 ? 's' : ''} garde${result.items.length > 1 ? 's' : ''} - ${result.rejectedItems.length} ignore${result.rejectedItems.length > 1 ? 's' : ''}'
+                : 'Aucun aliment reconnu automatiquement',
+            style: const TextStyle(
+              color: Color(0xFF4C4C4C),
+              fontSize: 11,
+            ),
+          ),
+          if (!hasAcceptedItems) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'La photo semble trop difficile a lire. Essaie une photo plus droite et plus proche, ou ajoute les items manuellement.',
+              style: TextStyle(
+                color: Color(0xFF8A4B3A),
+                fontSize: 10,
+                height: 1.25,
+              ),
+            ),
+          ],
+          if (previewItems.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final item in previewItems)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        color: Color(0xFF202020),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          if (hasAcceptedItems && result.rejectedItems.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Ignore : ${result.rejectedItems.map((item) => item.name).take(4).join(', ')}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF8A4B3A),
+                fontSize: 10,
+                height: 1.25,
+              ),
+            ),
+          ],
+          if (hasAcceptedItems && result.rawText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              result.rawText,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF707070),
+                fontSize: 10,
+                height: 1.25,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -318,7 +676,7 @@ class _ProductListRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${product.brand} - x${product.quantity} - Nutri-score ${product.nutriScore}',
+                  '${product.brand} - x${product.quantity} - item valide',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

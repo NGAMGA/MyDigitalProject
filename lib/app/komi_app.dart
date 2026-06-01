@@ -7,6 +7,7 @@ import '../features/profile/profile_page.dart';
 import '../features/scan/scan_page.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/shopping_list_provider.dart';
+import '../providers/user_session_provider.dart';
 import '../screens/favorites_screen.dart';
 import '../screens/search_screen.dart';
 
@@ -17,8 +18,9 @@ class KomiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()..load()),
         ChangeNotifierProvider(create: (_) => ShoppingListProvider()),
+        ChangeNotifierProvider(create: (_) => UserSessionProvider()..load()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -67,6 +69,7 @@ class _MainShellState extends State<MainShell> {
       HomePage(
         onOpenRecipes: () => _selectPage(1),
         onOpenScan: () => _selectPage(2),
+        onOpenProfile: () => _selectPage(4),
       ),
       SearchScreen(onBack: () => _selectPage(0)),
       ScanPage(onBack: () => _selectPage(0)),

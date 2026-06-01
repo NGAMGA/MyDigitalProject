@@ -9,18 +9,22 @@ import '../../models/meal.dart';
 import '../../models/shopping_product.dart';
 import '../../providers/favorites_provider.dart';
 import '../../providers/shopping_list_provider.dart';
+import '../../providers/user_session_provider.dart';
 import '../../screens/meal_detail_screen.dart';
 import '../../services/meal_api_service.dart';
+import '../../widgets/profile_avatar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.onOpenRecipes,
     required this.onOpenScan,
+    required this.onOpenProfile,
   });
 
   final VoidCallback onOpenRecipes;
   final VoidCallback onOpenScan;
+  final VoidCallback onOpenProfile;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -58,21 +62,11 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  String get _displayName {
-    final name = _user?.name.trim();
-    if (name == null || name.isEmpty) return 'Mathis';
-    return name.split(RegExp(r'\s+')).first;
-  }
-
-  String get _initial {
-    final name = _displayName.trim();
-    if (name.isEmpty) return 'M';
-    return name.characters.first.toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final shoppingList = context.watch<ShoppingListProvider>();
+    final sharedUser = context.watch<UserSessionProvider>().user;
+    final user = sharedUser ?? _user;
     final summary = shoppingList.summary;
 
     return SafeArea(
@@ -119,9 +113,11 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   height: headerHeight,
                   child: _Header(
-                    name: _displayName,
-                    initial: _initial,
+                    name: _displayNameFor(user),
+                    initial: _initialFor(user),
+                    avatarDataUrl: user?.profile.avatarDataUrl ?? '',
                     scale: scale,
+                    onAvatarTap: widget.onOpenProfile,
                   ),
                 ),
                 SizedBox(height: sectionGap),
@@ -166,18 +162,39 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  String _displayNameFor(KomiUser? user) {
+    final profileFirstName = user?.profile.firstName.trim();
+    if (profileFirstName != null && profileFirstName.isNotEmpty) {
+      return profileFirstName;
+    }
+
+    final name = user?.name.trim();
+    if (name == null || name.isEmpty) return '';
+    return name.split(RegExp(r'\s+')).first;
+  }
+
+  String _initialFor(KomiUser? user) {
+    final name = _displayNameFor(user).trim();
+    if (name.isEmpty) return '?';
+    return name.characters.first.toUpperCase();
+  }
 }
 
 class _Header extends StatelessWidget {
   const _Header({
     required this.name,
     required this.initial,
+    required this.avatarDataUrl,
     required this.scale,
+    required this.onAvatarTap,
   });
 
   final String name;
   final String initial;
+  final String avatarDataUrl;
   final double scale;
+  final VoidCallback onAvatarTap;
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +212,7 @@ class _Header extends StatelessWidget {
                 alignment: Alignment.centerLeft,
               ),
               Text(
-                'Bonjour $name !',
+                name.isEmpty ? 'Bonjour !' : 'Bonjour $name !',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -208,15 +225,17 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        CircleAvatar(
-          radius: 17 * scale,
-          backgroundColor: const Color(0xFF222222),
-          child: Text(
-            initial,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17 * scale,
-              fontWeight: FontWeight.w800,
+        Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onAvatarTap,
+            customBorder: const CircleBorder(),
+            child: ProfileAvatar(
+              avatarDataUrl: avatarDataUrl,
+              radius: 17 * scale,
+              initial: initial,
+              backgroundColor: const Color(0xFF222222),
             ),
           ),
         ),

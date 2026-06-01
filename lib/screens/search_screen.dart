@@ -256,7 +256,7 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _FeaturedMealCard extends StatelessWidget {
+class _FeaturedMealCard extends StatefulWidget {
   const _FeaturedMealCard({
     required this.meal,
     required this.currentIndex,
@@ -274,93 +274,163 @@ class _FeaturedMealCard extends StatelessWidget {
   final VoidCallback onOpenDetail;
 
   @override
+  State<_FeaturedMealCard> createState() => _FeaturedMealCardState();
+}
+
+class _FeaturedMealCardState extends State<_FeaturedMealCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _slideController;
+  late final Animation<double> _slideProgress;
+  int _slideDirection = 0;
+  bool _isSliding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+    _slideProgress = CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _slideThen(int direction, VoidCallback action) async {
+    if (_isSliding) return;
+
+    setState(() {
+      _isSliding = true;
+      _slideDirection = direction;
+    });
+
+    await _slideController.forward(from: 0);
+    if (!mounted) return;
+    action();
+    _slideController.reset();
+
+    if (!mounted) return;
+    setState(() {
+      _isSliding = false;
+      _slideDirection = 0;
+    });
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity > 180) {
+      _slideThen(1, widget.onSave);
+    } else if (velocity < -180) {
+      _slideThen(-1, widget.onSkip);
+    }
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return GestureDetector(
-          onHorizontalDragEnd: (details) {
-            final velocity = details.primaryVelocity ?? 0;
-            if (velocity > 180) {
-              onSave();
-            } else if (velocity < -180) {
-              onSkip();
-            }
-          },
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: onOpenDetail,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl: meal.thumbnail ?? '',
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: const Color(0xFFEAF5D6),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF062F1A),
-                            strokeWidth: 2,
+          onHorizontalDragEnd: _handleDragEnd,
+          child: AnimatedBuilder(
+            animation: _slideProgress,
+            builder: (context, child) {
+              final progress = _slideProgress.value;
+              final direction = _slideDirection.toDouble();
+              final dx = direction * progress * constraints.maxWidth * 1.08;
+              final angle = direction * progress * 0.08;
+              final opacity = 1 - (progress * 0.28);
+
+              return Transform.translate(
+                offset: Offset(dx, 0),
+                child: Transform.rotate(
+                  angle: angle,
+                  child: Opacity(opacity: opacity, child: child),
+                ),
+              );
+            },
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: widget.onOpenDetail,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl: widget.meal.thumbnail ?? '',
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: const Color(0xFFEAF5D6),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF062F1A),
+                              strokeWidth: 2,
+                            ),
                           ),
                         ),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: const Color(0xFFEAF5D6),
-                        child: const Icon(
-                          Icons.restaurant_rounded,
-                          color: Color(0xFF062F1A),
-                          size: 46,
+                        errorWidget: (_, __, ___) => Container(
+                          color: const Color(0xFFEAF5D6),
+                          child: const Icon(
+                            Icons.restaurant_rounded,
+                            color: Color(0xFF062F1A),
+                            size: 46,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                right: 12,
-                top: 12,
-                child: _RoundAction(
-                  icon: Icons.receipt_long_outlined,
-                  onTap: onOpenDetail,
-                  size: 52,
-                  iconSize: 28,
-                  backgroundColor: Colors.white.withOpacity(0.92),
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: _RoundAction(
+                    icon: Icons.receipt_long_outlined,
+                    onTap: widget.onOpenDetail,
+                    size: 52,
+                    iconSize: 28,
+                    backgroundColor: Colors.white.withOpacity(0.92),
+                  ),
                 ),
-              ),
-              Positioned(
-                left: 17,
-                right: 17,
-                bottom: 18,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _NavCluster(
-                      leadingIcon: Icons.arrow_back_rounded,
-                      trailingIcon: Icons.close_rounded,
-                      onLeading: onSkip,
-                      onTrailing: onSkip,
-                    ),
-                    _NavCluster(
-                      leadingIcon: Icons.receipt_long_outlined,
-                      trailingIcon: Icons.arrow_forward_rounded,
-                      onLeading: onOpenDetail,
-                      onTrailing: onSave,
-                    ),
-                  ],
+                Positioned(
+                  left: 17,
+                  right: 17,
+                  bottom: 18,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _NavCluster(
+                        leadingIcon: Icons.arrow_back_rounded,
+                        trailingIcon: Icons.close_rounded,
+                        onLeading: () => _slideThen(-1, widget.onSkip),
+                        onTrailing: () => _slideThen(-1, widget.onSkip),
+                      ),
+                      _NavCluster(
+                        leadingIcon: Icons.favorite_rounded,
+                        trailingIcon: Icons.arrow_forward_rounded,
+                        onLeading: () => _slideThen(1, widget.onSave),
+                        onTrailing: () => _slideThen(1, widget.onSave),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Positioned(
-                left: 14,
-                right: 14,
-                bottom: 84,
-                child: _MealCaption(
-                  meal: meal,
-                  currentIndex: currentIndex,
-                  total: total,
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 84,
+                  child: _MealCaption(
+                    meal: widget.meal,
+                    currentIndex: widget.currentIndex,
+                    total: widget.total,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

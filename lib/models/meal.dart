@@ -60,6 +60,42 @@ class Meal {
     );
   }
 
+  factory Meal.fromStoredJson(Map<String, dynamic> json) {
+    return Meal(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      category: json['category']?.toString(),
+      area: json['area']?.toString(),
+      instructions: json['instructions']?.toString(),
+      thumbnail: json['thumbnail']?.toString(),
+      tags: json['tags']?.toString(),
+      youtubeUrl: json['youtubeUrl']?.toString(),
+      ingredients: (json['ingredients'] as List<dynamic>?)
+              ?.map((ingredient) => ingredient.toString())
+              .toList() ??
+          const [],
+      measures: (json['measures'] as List<dynamic>?)
+              ?.map((measure) => measure.toString())
+              .toList() ??
+          const [],
+    );
+  }
+
+  Map<String, dynamic> toStoredJson() {
+    return {
+      'id': id,
+      'name': name,
+      'category': category,
+      'area': area,
+      'instructions': instructions,
+      'thumbnail': thumbnail,
+      'tags': tags,
+      'youtubeUrl': youtubeUrl,
+      'ingredients': ingredients,
+      'measures': measures,
+    };
+  }
+
   @override
   bool operator ==(Object other) => other is Meal && other.id == id;
 
