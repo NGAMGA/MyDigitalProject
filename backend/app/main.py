@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import Base, engine, ensure_schema_compatibility
-from app.routers import auth, invoices, subscriptions, users
+from app.routers import auth, food_filter, invoices, subscriptions, users
 
 app = FastAPI(title=settings.app_name)
 
@@ -36,6 +36,9 @@ FIELD_LABELS = {
     "country": "Pays",
     "bio": "Bio",
     "avatarDataUrl": "Photo de profil",
+    "items": "Liste de courses",
+    "quantity": "Quantite",
+    "category": "Categorie",
 }
 
 
@@ -104,3 +107,4 @@ app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(subscriptions.router, prefix=settings.api_prefix)
 app.include_router(invoices.router, prefix=settings.api_prefix)
+app.include_router(food_filter.router, prefix=settings.api_prefix)

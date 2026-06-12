@@ -1,12 +1,21 @@
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class SubscriptionPublic(BaseModel):
     plan: str
     status: str
     renewal: str = "-"
+
+
+class SubscriptionPlanPublic(BaseModel):
+    name: str
+    label: str
+    amountCents: int
+    billingPeriod: str
+    features: list[str]
 
 
 class UserProfilePublic(BaseModel):
@@ -86,8 +95,8 @@ class ChangePasswordRequest(BaseModel):
 
 
 class SubscriptionUpdateRequest(BaseModel):
-    plan: str = Field(min_length=1, max_length=30)
-    status: str = Field(min_length=1, max_length=30)
+    plan: Literal["Free", "Premium", "Pro"]
+    status: Literal["Actif", "Annule", "Expire", "En pause"] = "Actif"
     renewal: date | None = None
 
 
@@ -97,3 +106,44 @@ class InvoicePublic(BaseModel):
     label: str
     amount: str
     status: str
+
+
+class ShoppingListItem(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    quantity: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, max_length=80)
+
+    @field_validator("name", "quantity", "category", mode="before")
+    @classmethod
+    def strip_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+
+class FoodFilterRequest(BaseModel):
+    items: list[str | ShoppingListItem] = Field(min_length=1, max_length=300)
+
+
+class FoodFilterItemPublic(BaseModel):
+    name: str
+    quantity: str = ""
+    category: str = ""
+    confidence: float = Field(ge=0, le=1)
+    matchedTerms: list[str] = Field(default_factory=list)
+
+
+class FoodFilterRejectedItemPublic(BaseModel):
+    name: str
+    quantity: str = ""
+    category: str = ""
+    reason: str
+    matchedTerms: list[str] = Field(default_factory=list)
+
+
+class FoodFilterResponse(BaseModel):
+    foodItems: list[FoodFilterItemPublic]
+    rejectedItems: list[FoodFilterRejectedItemPublic]
+    totalItems: int
+    foodCount: int
+    rejectedCount: int
