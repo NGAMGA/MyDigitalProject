@@ -35,6 +35,7 @@ POST /api/v1/auth/reset-password
 POST /api/v1/shopping-lists/analyze-image
 POST /api/v1/shopping-lists/validate-items
 POST /api/v1/subscription/checkout/premium
+POST /api/v1/subscription/webhook
 POST /api/v1/menus/suggestions
 GET  /api/v1/menus/search
 GET  /api/v1/menus/cart
@@ -77,6 +78,7 @@ python -m venv .venv
 $env:DATABASE_URL="sqlite:///./komi_dev.db"
 $env:STRIPE_SECRET_KEY="sk_test_..."
 $env:STRIPE_PREMIUM_PRICE_ID="price_..."
+$env:STRIPE_WEBHOOK_SECRET="whsec_..."
 .\.venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -116,6 +118,7 @@ Pour Stripe :
 - le prix Stripe doit etre un Price recurrent configure a `6 € / mois`
 - la route renvoie `{ "url": "https://checkout.stripe.com/..." }`
 - si Stripe n'est pas configure, la route renvoie une erreur 503 lisible
+- le webhook `checkout.session.completed` active ensuite le plan Premium
 
 Variables optionnelles :
 
@@ -124,7 +127,13 @@ STRIPE_SUCCESS_URL=http://127.0.0.1:5454/#/subscription/success
 STRIPE_CANCEL_URL=http://127.0.0.1:5454/#/subscription/cancel
 ```
 
-Il manque encore le webhook `checkout.session.completed` pour passer automatiquement le compte en Premium apres paiement.
+En local, Stripe CLI peut transmettre les evenements au backend :
+
+```powershell
+stripe listen --forward-to http://127.0.0.1:8000/api/v1/subscription/webhook
+```
+
+La commande affiche la valeur `whsec_...` a placer dans `STRIPE_WEBHOOK_SECRET`.
 
 ## Base de donnees
 

@@ -59,7 +59,7 @@ Le produit documenté correspond à un MVP avancé : plusieurs écrans sont déj
 ### Encore partiel
 
 - Les suggestions de menus ne sont pas encore réellement personnalisées à partir de la liste de courses.
-- Le paiement Stripe n'active pas automatiquement le compte Premium, car le webhook `checkout.session.completed` n'est pas encore implémenté.
+- Le webhook Stripe doit être configuré et relayé vers le backend pour activer automatiquement le compte Premium.
 - Les restrictions entre les plans Standard/Free et Premium ne sont pas encore appliquées.
 - L'historique complet des listes ou des achats n'est pas encore persistant.
 - Le bilan nutritionnel repose sur un catalogue local et sur des valeurs génériques quand un produit n'est pas reconnu.
@@ -439,7 +439,7 @@ Points à renforcer avant production :
 - remplacer la clé JWT par défaut ;
 - désactiver `EXPOSE_PASSWORD_RESET_LINK_IN_RESPONSE` en production ;
 - restreindre `CORS_ORIGINS` au lieu de `*` ;
-- ajouter le webhook Stripe sécurisé ;
+- configurer le secret du webhook Stripe selon l'environnement ;
 - éviter de stocker durablement les avatars sous forme de data URL en base si le volume augmente ;
 - ajouter des limites de taille d'image et éventuellement du rate limiting.
 
@@ -465,7 +465,7 @@ Stripe renvoie une URL
 Flutter ouvre l'URL dans le navigateur
 ```
 
-Limite actuelle : après paiement, le compte n'est pas encore automatiquement passé en Premium. Il faut ajouter un webhook Stripe, écouter `checkout.session.completed`, vérifier la signature Stripe, retrouver l'utilisateur via `client_reference_id` ou `metadata.user_id`, puis mettre à jour la table `subscriptions`.
+Après paiement, le webhook écoute `checkout.session.completed`, vérifie la signature Stripe, retrouve l'utilisateur via `client_reference_id` ou `metadata.user_id`, puis met à jour la table `subscriptions`. En local, Stripe CLI doit transmettre les événements vers le backend.
 
 ## 13. Tests et qualité
 
@@ -513,7 +513,7 @@ TheMealDB fournit rapidement des recettes, des ingrédients et des images. Cette
 - Les produits ajoutés manuellement ont parfois des données nutritionnelles génériques.
 - Les recettes proposées sur l'accueil ne sont pas encore calculées à partir de la liste réelle.
 - Les favoris sont stockés localement.
-- Le paiement Stripe ne met pas encore à jour automatiquement le statut Premium.
+- Le webhook Stripe doit être configuré sur chaque environnement pour mettre à jour automatiquement le statut Premium.
 - Les droits Premium ne sont pas encore appliqués dans le front.
 - Les textes de l'application contiennent encore quelques formulations à homogénéiser.
 - Le système OCR dépend de la qualité de l'image et de la lisibilité de l'écriture.
@@ -523,7 +523,7 @@ TheMealDB fournit rapidement des recettes, des ingrédients et des images. Cette
 Priorités recommandées :
 
 1. Persister les listes de courses côté backend.
-2. Ajouter le webhook Stripe pour activer Premium automatiquement.
+2. Déployer et configurer le webhook Stripe sur l'environnement de production.
 3. Synchroniser les favoris avec le compte utilisateur.
 4. Calculer les suggestions de recettes depuis les ingrédients réellement présents.
 5. Ajouter une base produits plus complète ou connecter Open Food Facts.

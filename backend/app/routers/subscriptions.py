@@ -3,7 +3,7 @@ import uuid
 from datetime import date, timedelta
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -137,6 +137,67 @@ def create_premium_checkout_session(
     return schemas.CheckoutSessionPublic(url=session.url)
 
 
+@router.post("/webhook", response_model=schemas.GenericMessageResponse)
+async def handle_stripe_webhook(
+    request: Request,
+    stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
+    db: Session = Depends(get_db),
+) -> schemas.GenericMessageResponse:
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook Stripe non configure.",
+        )
+    if not stripe_signature:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Signature Stripe manquante.",
+        )
+
+    payload = await request.body()
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            stripe_signature,
+            settings.stripe_webhook_secret,
+        )
+    except (ValueError, stripe.error.SignatureVerificationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Webhook Stripe invalide.",
+        ) from exc
+
+    event_type = _stripe_value(event, "type")
+    if event_type != "checkout.session.completed":
+        return schemas.GenericMessageResponse(detail="Evenement Stripe ignore.")
+
+    session = _stripe_value(_stripe_value(event, "data"), "object")
+    user_id = _stripe_value(session, "client_reference_id")
+    metadata = _stripe_value(session, "metadata") or {}
+    user_id = user_id or _stripe_value(metadata, "user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Utilisateur Stripe introuvable dans la session.",
+        )
+
+    user = db.get(models.User, str(user_id))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur Komi introuvable.",
+        )
+
+    subscription = ensure_subscription(user, db)
+    subscription.plan = "Premium"
+    subscription.status = "Actif"
+    subscription.renewal_date = date.today() + timedelta(days=30)
+    db.add(subscription)
+    db.commit()
+
+    return schemas.GenericMessageResponse(detail="Abonnement Premium active.")
+
+
 @router.put("/me", response_model=schemas.SubscriptionPublic)
 def update_subscription(
     payload: schemas.SubscriptionUpdateRequest,
@@ -145,6 +206,11 @@ def update_subscription(
 ) -> schemas.SubscriptionPublic:
     if payload.plan not in SUBSCRIPTION_PLANS:
         raise HTTPException(status_code=400, detail="Plan d'abonnement invalide.")
+    if payload.plan != "Free":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Le passage Premium doit etre valide par Stripe Checkout.",
+        )
 
     subscription = ensure_subscription(current_user, db)
     previous_plan = subscription.plan
@@ -166,6 +232,14 @@ def update_subscription(
     db.commit()
     db.refresh(subscription)
     return serialize_subscription(subscription)
+
+
+def _stripe_value(value, key: str):
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value.get(key)
+    return getattr(value, key, None)
 
 
 @router.post("/me/cancel", response_model=schemas.SubscriptionPublic)

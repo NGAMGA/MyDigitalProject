@@ -13,7 +13,7 @@ Le site vitrine n'heberge plus l'API.
 Komi aide l'utilisateur a :
 - se creer un compte et se reconnecter sans friction
 - constituer une liste de courses
-- importer cette liste par photo ou galerie a terme
+- importer cette liste par photo ou galerie
 - saisir manuellement des items de liste
 - obtenir un bilan nutritionnel global de la liste
 - parcourir des recettes et en enregistrer en favoris
@@ -21,7 +21,7 @@ Komi aide l'utilisateur a :
 Important :
 - on ne parle plus de ticket de caisse comme flux principal
 - le coeur du MVP cote liste de courses est la liste elle-meme
-- l'OCR photo / galerie n'est pas encore branche en production dans l'app
+- l'OCR photo / galerie est branche entre l'app Flutter et le backend
 
 ## Etat actuel de l'application
 
@@ -46,7 +46,6 @@ Ce qui fonctionne aujourd'hui :
 
 Ce qui est encore partiel ou maquette :
 - suggestions de menus basees sur la liste reelle
-- confirmation automatique du paiement par webhook Stripe
 - restrictions Standard / Premium
 - edition persistante du profil
 - historique utilisateur complet
@@ -161,11 +160,12 @@ Variables backend necessaires :
 ```powershell
 $env:STRIPE_SECRET_KEY="sk_test_..."
 $env:STRIPE_PREMIUM_PRICE_ID="price_..."
+$env:STRIPE_WEBHOOK_SECRET="whsec_..."
 $env:STRIPE_SUCCESS_URL="http://127.0.0.1:5454/#/subscription/success"
 $env:STRIPE_CANCEL_URL="http://127.0.0.1:5454/#/subscription/cancel"
 ```
 
-Important : pour activer automatiquement le compte Premium apres paiement, il faudra ajouter un webhook Stripe `checkout.session.completed`.
+Le webhook Stripe `checkout.session.completed` active automatiquement le plan Premium. En developpement local, il faut transmettre les evenements avec Stripe CLI vers `/api/v1/subscription/webhook`.
 
 ## Notes pour l'equipe
 

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     cors_origins: str = "*"
     stripe_secret_key: str = ""
     stripe_premium_price_id: str = ""
+    stripe_webhook_secret: str = ""
     stripe_success_url: str = "http://127.0.0.1:5454/#/subscription/success"
     stripe_cancel_url: str = "http://127.0.0.1:5454/#/subscription/cancel"
 
