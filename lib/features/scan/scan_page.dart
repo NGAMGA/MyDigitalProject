@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/shopping_product.dart';
 import '../../models/shopping_list_analysis.dart';
 import '../../providers/shopping_list_provider.dart';
+import '../../providers/user_session_provider.dart';
 import '../../services/shopping_list_ocr_service.dart';
 
 class ScanPage extends StatefulWidget {
@@ -25,13 +26,43 @@ class _ScanPageState extends State<ScanPage> {
   ShoppingListAnalysisResult? _lastAnalysis;
   bool _isAnalyzing = false;
   bool _isValidatingManualItem = false;
+  bool _historyRequested = false;
 
-  static const List<String> _recentLists = [];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final shoppingList = context.read<ShoppingListProvider>();
+      shoppingList.load(force: true);
+      final plan = context
+          .read<UserSessionProvider>()
+          .user
+          ?.subscription
+          .plan
+          .toLowerCase();
+      if (plan == 'premium' || plan == 'pro') {
+        shoppingList.loadHistory();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final shoppingList = context.watch<ShoppingListProvider>();
     final products = shoppingList.products;
+    final plan = context
+        .watch<UserSessionProvider>()
+        .user
+        ?.subscription
+        .plan
+        .toLowerCase();
+    final isPremium = plan == 'premium' || plan == 'pro';
+    if (isPremium && !_historyRequested) {
+      _historyRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) shoppingList.loadHistory();
+      });
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -71,24 +102,70 @@ class _ScanPageState extends State<ScanPage> {
                     const _EmptyListState()
                   else
                     for (final product in products) ...[
-                      _ProductListRow(product: product),
+                      _ProductListRow(
+                        product: product,
+                        onRemove: () => shoppingList.removeProduct(product.id),
+                      ),
                       const Divider(height: 1, color: Color(0xFFD9D9D9)),
                     ],
+                  if (products.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: shoppingList.isSyncing
+                                ? null
+                                : shoppingList.clearCurrent,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            label: const Text('Vider la liste'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: shoppingList.isSyncing
+                                ? null
+                                : () async {
+                                    await shoppingList.createNewList();
+                                    if (isPremium) {
+                                      await shoppingList.loadHistory();
+                                    }
+                                  },
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('Nouvelle liste'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 18),
-                  const Text(
-                    'listes recentes',
-                    style: TextStyle(
+                  Text(
+                    isPremium ? 'Listes recentes' : 'Historique Premium',
+                    style: const TextStyle(
                       color: Color(0xFF202020),
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (_recentLists.isEmpty)
+                  if (!isPremium)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Passe Premium pour conserver plusieurs listes et consulter tout ton historique.',
+                        style:
+                            TextStyle(color: Color(0xFF6B6B6B), fontSize: 12),
+                      ),
+                    )
+                  else if (shoppingList.history.isEmpty)
                     const _EmptyRecentListsState()
                   else
-                    for (final list in _recentLists) ...[
-                      _RecentListRow(title: list),
+                    for (final list in shoppingList.history) ...[
+                      _RecentListRow(
+                        title: list.name,
+                        itemCount: list.items.length,
+                      ),
                       const Divider(height: 1, color: Color(0xFFD9D9D9)),
                     ],
                 ],
@@ -632,9 +709,10 @@ class _RoundImportButton extends StatelessWidget {
 }
 
 class _ProductListRow extends StatelessWidget {
-  const _ProductListRow({required this.product});
+  const _ProductListRow({required this.product, required this.onRemove});
 
   final ShoppingProduct product;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -688,6 +766,15 @@ class _ProductListRow extends StatelessWidget {
               ],
             ),
           ),
+          IconButton(
+            onPressed: onRemove,
+            tooltip: 'Retirer',
+            icon: const Icon(
+              Icons.close_rounded,
+              color: Color(0xFF6B6B6B),
+              size: 19,
+            ),
+          ),
         ],
       ),
     );
@@ -695,9 +782,10 @@ class _ProductListRow extends StatelessWidget {
 }
 
 class _RecentListRow extends StatelessWidget {
-  const _RecentListRow({required this.title});
+  const _RecentListRow({required this.title, required this.itemCount});
 
   final String title;
+  final int itemCount;
 
   @override
   Widget build(BuildContext context) {
@@ -720,9 +808,9 @@ class _RecentListRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  '10 jours - 14 plats',
-                  style: TextStyle(
+                Text(
+                  '$itemCount produit${itemCount > 1 ? 's' : ''}',
+                  style: const TextStyle(
                     color: Color(0xFF202020),
                     fontSize: 8,
                     height: 1,

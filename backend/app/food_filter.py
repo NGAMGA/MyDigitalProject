@@ -107,6 +107,22 @@ _french_aliases = {
     "yaourt": "yogurt",
 }
 
+_food_corrections = {
+    "petit poids": "Petits pois",
+    "petits poids": "Petits pois",
+    "petit poid": "Petits pois",
+    "petits poid": "Petits pois",
+    "petit pois": "Petits pois",
+    "pattes": "Pates",
+    "pate": "Pates",
+    "pates complete": "Pates completes",
+    "pates semi complete": "Pates semi-completes",
+    "riz basmatti": "Riz basmati",
+    "tomattes": "Tomates",
+    "pouller": "Poulet",
+    "poulet filet": "Filets de poulet",
+}
+
 
 def classify_food_items(items: list[str]) -> tuple[list[str], list[str]]:
     accepted: list[str] = []
@@ -114,7 +130,7 @@ def classify_food_items(items: list[str]) -> tuple[list[str], list[str]]:
     seen: set[str] = set()
 
     for item in items:
-        cleaned = _display_name(item)
+        cleaned = _correct_food_name(_display_name(item))
         normalized = normalize_food_text(cleaned)
         if not normalized or normalized in seen:
             continue
@@ -130,6 +146,9 @@ def classify_food_items(items: list[str]) -> tuple[list[str], list[str]]:
 
 def is_food_item(value: str) -> bool:
     normalized = normalize_food_text(value)
+    corrected = _food_corrections.get(normalized)
+    if corrected:
+        normalized = normalize_food_text(corrected)
     if len(normalized) < 2:
         return False
 
@@ -200,6 +219,11 @@ def _display_name(value: str) -> str:
     if not cleaned:
         return ""
     return cleaned[0].upper() + cleaned[1:]
+
+
+def _correct_food_name(value: str) -> str:
+    normalized = normalize_food_text(value)
+    return _food_corrections.get(normalized, value)
 
 
 def _singularize(value: str) -> str:

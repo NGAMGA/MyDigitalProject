@@ -32,6 +32,32 @@ class ProfileService {
   final AuthSessionStore _sessionStore;
   final String baseUrl;
 
+  Future<KomiUser> getMe() async {
+    final token = await _sessionStore.readToken();
+    if (token == null || token.isEmpty) {
+      throw const ProfileServiceException('Session expiree.');
+    }
+    try {
+      final response = await _httpClient.get(
+        Uri.parse('$baseUrl/users/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = _decodeResponse(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ProfileServiceException(_extractErrorMessage(data));
+      }
+      final user = KomiUser.fromJson(data);
+      await _sessionStore.updateUser(user);
+      return user;
+    } on ProfileServiceException {
+      rethrow;
+    } catch (_) {
+      throw const ProfileServiceException(
+        'Impossible de joindre le serveur Komi.',
+      );
+    }
+  }
+
   Future<KomiUser> updateMe(Map<String, dynamic> fields) async {
     final token = await _sessionStore.readToken();
     if (token == null || token.isEmpty) {

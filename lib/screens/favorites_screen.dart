@@ -53,7 +53,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(8, 20, 8, 104),
                 itemCount: _favoriteCategories.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, __) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   final category = _favoriteCategories[index];
                   final count =
@@ -419,75 +419,80 @@ class _FavoriteCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(9),
-      child: Container(
-        height: 146,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: -8,
-              right: -8,
-              bottom: -26,
-              height: 88,
-              child: Image.network(
-                category.imageUrl,
-                fit: BoxFit.cover,
-                alignment: category.alignment,
-                errorBuilder: (_, __, ___) => Image.asset(
-                  'assets/images/komi-bowl.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 32,
-              top: 16,
-              child: Text(
-                '$count favori${count > 1 ? 's' : ''}',
-                style: const TextStyle(
-                  color: Color(0xFF202020),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  category.title,
-                  style: const TextStyle(
-                    color: Color(0xFF111111),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 190,
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE7E7E7)),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Image.network(
+                    category.imageUrl,
+                    fit: BoxFit.cover,
+                    alignment: category.alignment,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/images/komi-bowl.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+              SizedBox(
+                height: 58,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          category.title,
+                          style: const TextStyle(
+                            color: Color(0xFF111111),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '$count favori${count > 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          color: Color(0xFF6B6B6B),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF062F1A),
+                        size: 21,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-enum _FavoriteCategoryType { products, starters, mains, desserts }
+enum _FavoriteCategoryType { starters, mains, desserts }
 
 const _favoriteCategories = [
-  _FavoriteCategory(
-    type: _FavoriteCategoryType.products,
-    title: 'Produits',
-    imageUrl:
-        'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80',
-    alignment: Alignment.bottomCenter,
-  ),
   _FavoriteCategory(
     type: _FavoriteCategoryType.starters,
     title: 'Entrees',
@@ -530,8 +535,6 @@ _FavoriteCategoryType _categoryForMeal(Meal meal) {
 
 String _labelForCategory(_FavoriteCategoryType category) {
   switch (category) {
-    case _FavoriteCategoryType.products:
-      return 'Produits';
     case _FavoriteCategoryType.starters:
       return 'Entrees';
     case _FavoriteCategoryType.mains:

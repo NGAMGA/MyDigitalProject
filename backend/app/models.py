@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -34,6 +34,9 @@ class User(Base):
     )
     
     cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan")
+    shopping_lists: Mapped[list["ShoppingList"]] = relationship(
+        "ShoppingList", back_populates="user", cascade="all, delete-orphan"
+    )
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
         "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
     )
@@ -92,3 +95,64 @@ class CartItem(Base):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="cart_items")
+
+
+class ShoppingList(Base):
+    __tablename__ = "shopping_lists"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), default="Liste de courses actuelle", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="shopping_lists")
+    items: Mapped[list["ShoppingListProduct"]] = relationship(
+        "ShoppingListProduct",
+        back_populates="shopping_list",
+        cascade="all, delete-orphan",
+    )
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    normalized_name: Mapped[str] = mapped_column(String(160), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    brand: Mapped[str] = mapped_column(String(120), default="A completer", nullable=False)
+    image_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    energy_kcal: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    proteins: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    fibers: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    fat: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    sugars: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    salt: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    nutri_score: Mapped[str] = mapped_column(String(4), default="-", nullable=False)
+
+    shopping_list_links: Mapped[list["ShoppingListProduct"]] = relationship(
+        "ShoppingListProduct", back_populates="product"
+    )
+
+
+class ShoppingListProduct(Base):
+    __tablename__ = "shopping_list_products"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    shopping_list_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("shopping_lists.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    product_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    is_food: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    shopping_list: Mapped["ShoppingList"] = relationship("ShoppingList", back_populates="items")
+    product: Mapped["Product"] = relationship("Product", back_populates="shopping_list_links")

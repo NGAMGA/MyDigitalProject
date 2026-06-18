@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/user_session_provider.dart';
 import 'data/auth_api_client.dart';
 import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
@@ -50,6 +52,8 @@ class _SignUpPageState extends State<SignUpPage> {
       );
       await _sessionStore.save(session);
 
+      if (!mounted) return;
+      await context.read<UserSessionProvider>().setUser(session.user);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const WelcomePage()),

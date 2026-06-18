@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import schemas
+from app.food_filter import classify_food_items
 from app.routers.food_filter import filter_food_items
 
 
@@ -37,6 +38,14 @@ class FoodFilterTest(unittest.TestCase):
 
         self.assertEqual(result.foodCount, 1)
         self.assertEqual(result.foodItems[0].category, "Fruits")
+
+    def test_corrects_common_manual_entry_typos(self) -> None:
+        accepted, rejected = classify_food_items(
+            ["Petit poids", "riz basmatti", "chaise"]
+        )
+
+        self.assertEqual(accepted, ["Petits pois", "Riz basmati"])
+        self.assertEqual(rejected, ["Chaise"])
 
 
 if __name__ == "__main__":

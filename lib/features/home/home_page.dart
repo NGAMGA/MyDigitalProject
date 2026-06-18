@@ -37,6 +37,8 @@ class _HomePageState extends State<HomePage> {
   KomiUser? _user;
   List<Meal> _suggestions = const [];
   bool _loadingSuggestions = true;
+  ShoppingListProvider? _shoppingListProvider;
+  String _lastIngredientSignature = '';
 
   @override
   void initState() {
@@ -44,20 +46,87 @@ class _HomePageState extends State<HomePage> {
     _loadHomeData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<ShoppingListProvider>();
+    if (identical(provider, _shoppingListProvider)) return;
+
+    _shoppingListProvider?.removeListener(_handleShoppingListChanged);
+    _shoppingListProvider = provider;
+    provider.addListener(_handleShoppingListChanged);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        provider.load(force: true);
+        _handleShoppingListChanged();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _shoppingListProvider?.removeListener(_handleShoppingListChanged);
+    super.dispose();
+  }
+
+  void _handleShoppingListChanged() {
+    final ingredients = _shoppingListProvider?.products
+            .map((product) => product.name)
+            .toList() ??
+        const <String>[];
+    final signature = ingredients
+        .map((ingredient) => ingredient.trim().toLowerCase())
+        .join('|');
+    if (signature == _lastIngredientSignature) return;
+    _lastIngredientSignature = signature;
+    _loadSuggestions(ingredients);
+  }
+
   Future<void> _loadHomeData() async {
     final user = await _sessionStore.readUser();
-    var suggestions = <Meal>[];
-
-    try {
-      suggestions = await _mealApi.searchMeals('chicken');
-    } catch (_) {
-      suggestions = <Meal>[];
-    }
 
     if (!mounted) return;
     setState(() {
       _user = user;
-      _suggestions = suggestions.take(6).toList();
+    });
+
+    final ingredients = _shoppingListProvider?.products
+            .map((product) => product.name)
+            .toList() ??
+        const <String>[];
+    await _loadSuggestions(ingredients, force: true);
+  }
+
+  Future<void> _loadSuggestions(
+    List<String> ingredients, {
+    bool force = false,
+  }) async {
+    final signature = ingredients
+        .map((ingredient) => ingredient.trim().toLowerCase())
+        .join('|');
+    if (!force && signature != _lastIngredientSignature) return;
+
+    if (mounted) {
+      setState(() => _loadingSuggestions = true);
+    }
+
+    var suggestions = <Meal>[];
+    if (ingredients.isNotEmpty) {
+      try {
+        final isPremium = _user?.subscription.plan.toLowerCase() == 'premium';
+        suggestions = await _mealApi.getMealsByIngredients(
+          ingredients.take(isPremium ? 5 : 2).toList(),
+        );
+      } catch (_) {
+        suggestions = <Meal>[];
+      }
+    }
+
+    if (!mounted || signature != _lastIngredientSignature) return;
+    final isPremium = _user?.subscription.plan.toLowerCase() == 'premium';
+    setState(() {
+      _suggestions = suggestions.take(isPremium ? 6 : 3).toList();
       _loadingSuggestions = false;
     });
   }
@@ -144,7 +213,9 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   height: titleHeight,
                   child: _SectionTitle(
-                    title: 'Suggestions de recettes',
+                    title: shoppingList.products.isEmpty
+                        ? 'Suggestions de recettes'
+                        : 'Recettes avec vos courses',
                     actionLabel: 'Voir tout',
                     onAction: widget.onOpenRecipes,
                   ),
@@ -153,6 +224,7 @@ class _HomePageState extends State<HomePage> {
                 _RecipeSuggestions(
                   meals: _suggestions,
                   isLoading: _loadingSuggestions,
+                  hasIngredients: shoppingList.products.isNotEmpty,
                   height: recipeHeight,
                 ),
               ],
@@ -604,11 +676,13 @@ class _RecipeSuggestions extends StatelessWidget {
   const _RecipeSuggestions({
     required this.meals,
     required this.isLoading,
+    required this.hasIngredients,
     required this.height,
   });
 
   final List<Meal> meals;
   final bool isLoading;
+  final bool hasIngredients;
   final double height;
 
   @override
@@ -629,11 +703,17 @@ class _RecipeSuggestions extends StatelessWidget {
       return Container(
         height: height,
         alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
           color: const Color(0xFFF4F4F4),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: const Text('Aucune suggestion disponible'),
+        child: Text(
+          hasIngredients
+              ? 'Aucune recette trouvee pour ces aliments. Essaie d ajouter un ingredient principal.'
+              : 'Ajoute tes courses pour obtenir des recettes adaptees.',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 
@@ -717,7 +797,7 @@ class _RecipeCard extends StatelessWidget {
                           width: 23,
                           height: 23,
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.42),
+                            color: Colors.black.withValues(alpha: 0.42),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

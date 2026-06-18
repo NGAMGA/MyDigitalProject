@@ -37,7 +37,15 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadUser() async {
-    final user = await _sessionStore.readUser();
+    KomiUser? user;
+    try {
+      user = await _profileService.getMe();
+      if (mounted) {
+        await context.read<UserSessionProvider>().setUser(user);
+      }
+    } catch (_) {
+      user = await _sessionStore.readUser();
+    }
     if (!mounted) return;
     setState(() => _user = user);
   }
@@ -638,9 +646,10 @@ class _SubscriptionCards extends StatelessWidget {
           isCurrent: !isPremium,
           features: const [
             'Compte Komi',
-            'Liste de courses',
-            'Ajout manuel',
-            'Analyse de base',
+            'Une liste persistante',
+            'Ajout manuel et photo',
+            'Bilan de base',
+            '3 suggestions personnalisees',
           ],
           actionLabel: !isPremium ? 'Actuel' : null,
         ),
@@ -652,10 +661,10 @@ class _SubscriptionCards extends StatelessWidget {
           status: isPremium ? (status.isEmpty ? 'Actif' : status) : 'Option',
           isCurrent: isPremium,
           features: const [
-            'Analyses avancees',
-            'Suggestions personnalisees',
+            'Plusieurs listes',
             'Historique complet',
-            'Nouveautes prioritaires',
+            'Analyse de 5 ingredients',
+            '6 suggestions personnalisees',
           ],
           actionLabel: isPremium ? 'Actuel' : 'Passer Premium',
           isLoading: isStartingCheckout,

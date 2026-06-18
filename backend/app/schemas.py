@@ -125,6 +125,41 @@ class ShoppingListItem(BaseModel):
         return str(value).strip()
 
 
+class ShoppingProductPayload(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    brand: str = Field(default="A completer", max_length=120)
+    quantity: int = Field(default=1, ge=1, le=999)
+    imageUrl: str = Field(default="", max_length=2000)
+    energyKcal: float = 0
+    proteins: float = 0
+    fibers: float = 0
+    fat: float = 0
+    sugars: float = 0
+    salt: float = 0
+    nutriScore: str = Field(default="-", max_length=4)
+
+
+class ShoppingProductPublic(ShoppingProductPayload):
+    id: int
+
+
+class ShoppingListPublic(BaseModel):
+    id: int
+    name: str
+    isActive: bool
+    createdAt: datetime
+    updatedAt: datetime
+    items: list[ShoppingProductPublic]
+
+
+class ShoppingListCreateRequest(BaseModel):
+    name: str = Field(default="Liste de courses actuelle", min_length=1, max_length=120)
+
+
+class ShoppingListReplaceItemsRequest(BaseModel):
+    items: list[ShoppingProductPayload] = Field(default_factory=list, max_length=300)
+
+
 class FoodFilterRequest(BaseModel):
     items: list[str | ShoppingListItem] = Field(min_length=1, max_length=300)
 

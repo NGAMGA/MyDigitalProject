@@ -27,6 +27,39 @@ class ShoppingProduct {
   final double salt;
   final String nutriScore;
 
+  factory ShoppingProduct.fromJson(Map<String, dynamic> json) {
+    double number(String key) => (json[key] as num?)?.toDouble() ?? 0;
+
+    return ShoppingProduct(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? '',
+      brand: json['brand'] as String? ?? 'A completer',
+      quantity: json['quantity'] as int? ?? 1,
+      imageUrl: json['imageUrl'] as String? ?? '',
+      energyKcal: number('energyKcal'),
+      proteins: number('proteins'),
+      fibers: number('fibers'),
+      fat: number('fat'),
+      sugars: number('sugars'),
+      salt: number('salt'),
+      nutriScore: json['nutriScore'] as String? ?? '-',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'brand': brand,
+        'quantity': quantity,
+        'imageUrl': imageUrl,
+        'energyKcal': energyKcal,
+        'proteins': proteins,
+        'fibers': fibers,
+        'fat': fat,
+        'sugars': sugars,
+        'salt': salt,
+        'nutriScore': nutriScore,
+      };
+
   double get proteinTotal => proteins * quantity;
   double get fiberTotal => fibers * quantity;
   double get fatTotal => fat * quantity;

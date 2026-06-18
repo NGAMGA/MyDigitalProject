@@ -17,17 +17,27 @@ router = APIRouter(prefix="/subscription", tags=["subscription"])
 SUBSCRIPTION_PLANS: dict[str, schemas.SubscriptionPlanPublic] = {
     "Free": schemas.SubscriptionPlanPublic(
         name="Free",
-        label="Gratuit",
+        label="Standard",
         amountCents=0,
         billingPeriod="none",
-        features=["Compte Komi", "Recettes de base", "Favoris"],
+        features=[
+            "Une liste de courses persistante",
+            "Ajout manuel et import photo",
+            "Bilan nutritionnel de base",
+            "Suggestions sur 2 ingredients",
+        ],
     ),
     "Premium": schemas.SubscriptionPlanPublic(
         name="Premium",
         label="Premium",
         amountCents=600,
         billingPeriod="monthly",
-        features=["Recettes avancees", "Listes de courses", "Filtrage alimentaire"],
+        features=[
+            "Plusieurs listes de courses",
+            "Historique complet",
+            "Suggestions sur 5 ingredients",
+            "Jusqu a 6 recettes personnalisees",
+        ],
     ),
     "Pro": schemas.SubscriptionPlanPublic(
         name="Pro",

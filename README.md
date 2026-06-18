@@ -42,13 +42,15 @@ Ce qui fonctionne aujourd'hui :
 - panier de recettes avec generation d'une liste de courses
 - abonnement Standard visible comme version actuelle par defaut
 - creation d'une session Stripe Checkout pour passer Premium
+- liste de courses persistante par utilisateur
+- suggestions calculees depuis les ingredients de la liste reelle
+- limites Standard / Premium appliquees aux recommandations et a l'historique
 - page profil et page favoris reworkees visuellement
 
 Ce qui est encore partiel ou maquette :
-- suggestions de menus basees sur la liste reelle
-- restrictions Standard / Premium
-- edition persistante du profil
-- historique utilisateur complet
+- donnees nutritionnelles generiques pour les produits inconnus
+- synchronisation des favoris entre appareils
+- activation Premium automatique dependante du webhook Stripe
 
 ## Architecture rapide
 

@@ -1,11 +1,194 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
+from app.database import get_db
 from app.deps import get_current_user
-from app.food_filter import classify_food_items
+from app.food_filter import classify_food_items, normalize_food_text
 from app.shopping_list_ocr import analyze_shopping_list_image
 
 router = APIRouter(prefix="/shopping-lists", tags=["shopping-lists"])
+
+
+def _is_premium(user: models.User) -> bool:
+    subscription = user.subscription
+    return bool(
+        subscription
+        and subscription.plan in {"Premium", "Pro"}
+        and subscription.status == "Actif"
+    )
+
+
+def _active_list(user_id: str, db: Session) -> models.ShoppingList | None:
+    return db.execute(
+        select(models.ShoppingList)
+        .options(joinedload(models.ShoppingList.items).joinedload(models.ShoppingListProduct.product))
+        .where(
+            models.ShoppingList.user_id == user_id,
+            models.ShoppingList.is_active.is_(True),
+        )
+        .order_by(models.ShoppingList.updated_at.desc())
+    ).unique().scalars().first()
+
+
+def _ensure_active_list(user_id: str, db: Session) -> models.ShoppingList:
+    shopping_list = _active_list(user_id, db)
+    if shopping_list is not None:
+        return shopping_list
+    shopping_list = models.ShoppingList(user_id=user_id)
+    db.add(shopping_list)
+    db.commit()
+    return _active_list(user_id, db) or shopping_list
+
+
+def _serialize_list(shopping_list: models.ShoppingList) -> schemas.ShoppingListPublic:
+    return schemas.ShoppingListPublic(
+        id=shopping_list.id,
+        name=shopping_list.name,
+        isActive=shopping_list.is_active,
+        createdAt=shopping_list.created_at,
+        updatedAt=shopping_list.updated_at,
+        items=[
+            schemas.ShoppingProductPublic(
+                id=link.id,
+                name=link.product.name,
+                brand=link.product.brand,
+                quantity=link.quantity,
+                imageUrl=link.product.image_url,
+                energyKcal=link.product.energy_kcal,
+                proteins=link.product.proteins,
+                fibers=link.product.fibers,
+                fat=link.product.fat,
+                sugars=link.product.sugars,
+                salt=link.product.salt,
+                nutriScore=link.product.nutri_score,
+            )
+            for link in shopping_list.items
+        ],
+    )
+
+
+@router.get("/current", response_model=schemas.ShoppingListPublic)
+def get_current_list(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.ShoppingListPublic:
+    return _serialize_list(_ensure_active_list(current_user.id, db))
+
+
+@router.get("/history", response_model=list[schemas.ShoppingListPublic])
+def get_list_history(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[schemas.ShoppingListPublic]:
+    if not _is_premium(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="L historique complet des listes est reserve au plan Premium.",
+        )
+    lists = db.execute(
+        select(models.ShoppingList)
+        .options(joinedload(models.ShoppingList.items).joinedload(models.ShoppingListProduct.product))
+        .where(models.ShoppingList.user_id == current_user.id)
+        .order_by(models.ShoppingList.updated_at.desc())
+    ).unique().scalars().all()
+    return [_serialize_list(item) for item in lists]
+
+
+@router.post("", response_model=schemas.ShoppingListPublic)
+def create_new_list(
+    payload: schemas.ShoppingListCreateRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.ShoppingListPublic:
+    current = _active_list(current_user.id, db)
+    if current is not None:
+        if _is_premium(current_user):
+            current.is_active = False
+        else:
+            db.delete(current)
+        db.flush()
+    shopping_list = models.ShoppingList(user_id=current_user.id, name=payload.name)
+    db.add(shopping_list)
+    db.commit()
+    return _serialize_list(_active_list(current_user.id, db) or shopping_list)
+
+
+@router.put("/current/items", response_model=schemas.ShoppingListPublic)
+def replace_current_items(
+    payload: schemas.ShoppingListReplaceItemsRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.ShoppingListPublic:
+    shopping_list = _ensure_active_list(current_user.id, db)
+    db.execute(
+        delete(models.ShoppingListProduct).where(
+            models.ShoppingListProduct.shopping_list_id == shopping_list.id
+        )
+    )
+
+    for item in payload.items:
+        normalized_name = normalize_food_text(item.name)
+        product = db.execute(
+            select(models.Product).where(models.Product.normalized_name == normalized_name)
+        ).scalar_one_or_none()
+        if product is None:
+            product = models.Product(
+                normalized_name=normalized_name,
+                name=item.name,
+                brand=item.brand,
+                image_url=item.imageUrl,
+                energy_kcal=item.energyKcal,
+                proteins=item.proteins,
+                fibers=item.fibers,
+                fat=item.fat,
+                sugars=item.sugars,
+                salt=item.salt,
+                nutri_score=item.nutriScore,
+            )
+            db.add(product)
+            db.flush()
+        db.add(
+            models.ShoppingListProduct(
+                shopping_list_id=shopping_list.id,
+                product_id=product.id,
+                quantity=item.quantity,
+                is_food=True,
+            )
+        )
+    db.commit()
+    return _serialize_list(_active_list(current_user.id, db) or shopping_list)
+
+
+@router.delete("/current/items/{item_id}", response_model=schemas.ShoppingListPublic)
+def remove_current_item(
+    item_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.ShoppingListPublic:
+    shopping_list = _ensure_active_list(current_user.id, db)
+    link = db.get(models.ShoppingListProduct, item_id)
+    if link is None or link.shopping_list_id != shopping_list.id:
+        raise HTTPException(status_code=404, detail="Produit introuvable dans cette liste.")
+    db.delete(link)
+    db.commit()
+    return _serialize_list(_active_list(current_user.id, db) or shopping_list)
+
+
+@router.delete("/current", response_model=schemas.ShoppingListPublic)
+def clear_current_list(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.ShoppingListPublic:
+    shopping_list = _ensure_active_list(current_user.id, db)
+    db.execute(
+        delete(models.ShoppingListProduct).where(
+            models.ShoppingListProduct.shopping_list_id == shopping_list.id
+        )
+    )
+    db.commit()
+    return _serialize_list(_active_list(current_user.id, db) or shopping_list)
 
 
 @router.post(

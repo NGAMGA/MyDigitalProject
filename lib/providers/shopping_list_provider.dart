@@ -1,9 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/shopping_product.dart';
+import '../services/shopping_list_service.dart';
 
 class ShoppingListProvider extends ChangeNotifier {
   final List<ShoppingProduct> _products = [];
+  final ShoppingListService _service = ShoppingListService();
+  List<ShoppingListSnapshot> _history = const [];
+  String _currentListName = 'Liste de courses actuelle';
+  bool _isLoading = false;
+  bool _isSyncing = false;
+  String? _syncError;
+  Future<void> _saveQueue = Future<void>.value();
 
   static const List<ShoppingProduct> _catalog = [
     ShoppingProduct(
@@ -129,8 +139,12 @@ class ShoppingListProvider extends ChangeNotifier {
   ];
 
   List<ShoppingProduct> get products => List.unmodifiable(_products);
+  List<ShoppingListSnapshot> get history => List.unmodifiable(_history);
+  bool get isLoading => _isLoading;
+  bool get isSyncing => _isSyncing;
+  String? get syncError => _syncError;
 
-  String get currentListName => 'Liste de courses actuelle';
+  String get currentListName => _currentListName;
 
   int get productCount =>
       _products.fold(0, (sum, product) => sum + product.quantity);
@@ -145,6 +159,7 @@ class ShoppingListProvider extends ChangeNotifier {
 
     if (addedCount > 0) {
       notifyListeners();
+      _schedulePersist();
     }
     return addedCount;
   }
@@ -186,6 +201,7 @@ class ShoppingListProvider extends ChangeNotifier {
       );
       if (notify) {
         notifyListeners();
+        _schedulePersist();
       }
       return true;
     }
@@ -210,8 +226,99 @@ class ShoppingListProvider extends ChangeNotifier {
     );
     if (notify) {
       notifyListeners();
+      _schedulePersist();
     }
     return true;
+  }
+
+  Future<void> load({bool force = false}) async {
+    if (_isLoading && !force) return;
+    _isLoading = true;
+    _syncError = null;
+    notifyListeners();
+    try {
+      final snapshot = await _service.loadCurrent();
+      _applySnapshot(snapshot);
+    } catch (error) {
+      _syncError = error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeProduct(String productId) async {
+    _products.removeWhere((product) => product.id == productId);
+    notifyListeners();
+    _schedulePersist();
+    await _saveQueue;
+  }
+
+  Future<void> clearCurrent() async {
+    await _saveQueue;
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      _applySnapshot(await _service.clearCurrent());
+      _syncError = null;
+    } catch (error) {
+      _syncError = error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createNewList({String? name}) async {
+    await _saveQueue;
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      _applySnapshot(await _service.createNew(name: name));
+      _syncError = null;
+    } catch (error) {
+      _syncError = error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadHistory() async {
+    try {
+      _history = await _service.loadHistory();
+      _syncError = null;
+    } catch (error) {
+      _history = const [];
+      _syncError = error.toString().replaceFirst('Exception: ', '');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _persist() async {
+    _isSyncing = true;
+    notifyListeners();
+    try {
+      _applySnapshot(await _service.replaceItems(_products));
+      _syncError = null;
+    } catch (error) {
+      _syncError = error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  void _schedulePersist() {
+    _saveQueue = _saveQueue.then((_) => _persist());
+    unawaited(_saveQueue);
+  }
+
+  void _applySnapshot(ShoppingListSnapshot snapshot) {
+    _currentListName = snapshot.name;
+    _products
+      ..clear()
+      ..addAll(snapshot.items);
   }
 
   ShoppingNutritionSummary get summary {
