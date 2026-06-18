@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../app/komi_app.dart';
 import 'auth_choice_page.dart';
+import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
 
 class SplashPage extends StatefulWidget {
@@ -17,6 +19,7 @@ class _SplashPageState extends State<SplashPage>
   late final AnimationController _controller;
   late final Animation<double> _scale;
   late final Animation<double> _fade;
+  final _sessionStore = const AuthSessionStore();
   Timer? _navigationTimer;
 
   @override
@@ -24,27 +27,33 @@ class _SplashPageState extends State<SplashPage>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..forward();
-    _scale = Tween<double>(begin: 0.94, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+      duration: Duration.zero,
+    )..value = 1;
+    _scale = const AlwaysStoppedAnimation<double>(1);
+    _fade = const AlwaysStoppedAnimation<double>(1);
 
-    _navigationTimer = Timer(const Duration(milliseconds: 2100), () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder<void>(
-          transitionDuration: const Duration(milliseconds: 720),
-          reverseTransitionDuration: const Duration(milliseconds: 420),
-          pageBuilder: (_, animation, __) => const AuthChoicePage(),
-          transitionsBuilder: (_, animation, __, child) => FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
+    _navigationTimer = Timer(
+      const Duration(milliseconds: 1400),
+      _resolveInitialRoute,
+    );
+  }
+
+  Future<void> _resolveInitialRoute() async {
+    final hasValidSession = await _sessionStore.hasValidSession();
+    if (!mounted) return;
+
+    final target = hasValidSession ? const MainShell() : const AuthChoicePage();
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 520),
+        reverseTransitionDuration: const Duration(milliseconds: 420),
+        pageBuilder: (_, animation, __) => target,
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+          opacity: animation,
+          child: child,
         ),
-      );
-    });
+      ),
+    );
   }
 
   @override

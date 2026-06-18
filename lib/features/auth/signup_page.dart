@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/user_session_provider.dart';
 import 'data/auth_api_client.dart';
 import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
@@ -51,6 +53,8 @@ class _SignUpPageState extends State<SignUpPage> {
       await _sessionStore.save(session);
 
       if (!mounted) return;
+      await context.read<UserSessionProvider>().setUser(session.user);
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const WelcomePage()),
         (_) => false,
@@ -81,6 +85,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -171,10 +177,18 @@ class _SignUpPageState extends State<SignUpPage> {
                   left: horizontalPadding,
                   right: horizontalPadding,
                   bottom: 18,
-                  child: _LoginFooter(
-                    onPressed: () => Navigator.of(context).pushReplacement(
-                      MaterialPageRoute<void>(
-                          builder: (_) => const LoginPage()),
+                  child: IgnorePointer(
+                    ignoring: isKeyboardOpen,
+                    child: AnimatedOpacity(
+                      opacity: isKeyboardOpen ? 0 : 1,
+                      duration: const Duration(milliseconds: 140),
+                      child: _LoginFooter(
+                        onPressed: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LoginPage(),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

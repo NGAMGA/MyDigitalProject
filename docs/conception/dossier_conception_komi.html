@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dossier de conception - Komi</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 15mm;
+    }
+
+    :root {
+      --green: #062f1a;
+      --lime: #ddf577;
+      --ink: #18211c;
+      --muted: #66736a;
+      --line: #dce6dd;
+      --soft: #f5f8f2;
+      --panel: #ffffff;
+      --accent: #fff2c7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #eef4ec;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.8pt;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      background: var(--panel);
+      box-shadow: 0 20px 60px rgba(6, 47, 26, 0.14);
+    }
+
+    .cover {
+      min-height: 92vh;
+      padding: 58px 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        linear-gradient(140deg, rgba(6, 47, 26, 0.94), rgba(11, 75, 40, 0.9)),
+        url("../../assets/images/komi-bowl.png") right 46px bottom 42px / 300px auto no-repeat;
+      color: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover::after {
+      content: "";
+      position: absolute;
+      right: -70px;
+      top: -90px;
+      width: 280px;
+      height: 280px;
+      border: 32px solid rgba(221, 245, 119, 0.22);
+      border-radius: 999px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: var(--lime);
+      color: var(--green);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 24px;
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 620px;
+      margin: 72px 0 20px;
+      font-size: 46px;
+      line-height: 1.05;
+      letter-spacing: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .subtitle {
+      max-width: 560px;
+      color: #e8f3e7;
+      font-size: 17px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 44px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .meta-box {
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.08);
+      padding: 14px;
+      border-radius: 8px;
+    }
+
+    .meta-box span {
+      display: block;
+      color: var(--lime);
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    section {
+      padding: 0 54px;
+    }
+
+    .toc,
+    .content-section {
+      padding-top: 34px;
+      padding-bottom: 18px;
+    }
+
+    h2 {
+      break-after: avoid;
+      margin: 0 0 14px;
+      padding-bottom: 7px;
+      border-bottom: 2px solid var(--green);
+      color: var(--green);
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    h3 {
+      break-after: avoid;
+      margin: 18px 0 8px;
+      color: var(--green);
+      font-size: 15px;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul,
+    ol {
+      margin: 7px 0 12px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 3px 0;
+    }
+
+    .lead {
+      font-size: 13px;
+      color: #314238;
+      background: var(--soft);
+      border-left: 5px solid var(--lime);
+      padding: 14px 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 18px;
+    }
+
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 18px;
+      padding: 12px 0 0;
+    }
+
+    .toc-grid a {
+      color: var(--green);
+      text-decoration: none;
+      border-bottom: 1px solid var(--line);
+      padding: 5px 0;
+      font-weight: 600;
+    }
+
+    .callout {
+      background: #fffaf0;
+      border: 1px solid #f0dfae;
+      border-left: 5px solid #d9a321;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 12px 0 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #ffffff;
+      break-inside: avoid;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    code {
+      background: #eef5ec;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 9.6pt;
+    }
+
+    pre {
+      background: #102218;
+      color: #eff9ef;
+      padding: 13px 15px;
+      border-radius: 8px;
+      overflow: hidden;
+      white-space: pre-wrap;
+      break-inside: avoid;
+      font-size: 9.4pt;
+      line-height: 1.45;
+    }
+
+    .schema {
+      background: #f7faf5;
+      border: 1px solid var(--line);
+      padding: 15px;
+      border-radius: 8px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 9.6pt;
+      white-space: pre-wrap;
+      break-inside: avoid;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      break-inside: avoid;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      text-align: left;
+      padding: 8px 9px;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--green);
+      background: var(--soft);
+    }
+
+    .pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 10px 0 18px;
+    }
+
+    .pill {
+      background: var(--green);
+      color: white;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 9.4pt;
+      font-weight: 700;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 9.6pt;
+      padding: 24px 54px 42px;
+      border-top: 1px solid var(--line);
+    }
+
+    .page-break {
+      break-before: page;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+      main {
+        box-shadow: none;
+        max-width: none;
+      }
+      .cover {
+        min-height: 260mm;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      a {
+        color: inherit;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="cover">
+      <div>
+        <div class="brand">
+          <div class="brand-mark">K</div>
+          <div class="brand-name">Komi</div>
+        </div>
+        <h1>Dossier de conception de l'application Komi</h1>
+        <p class="subtitle">Architecture, parcours, choix techniques, modèle de données, sécurité et limites actuelles du MVP.</p>
+        <div class="cover-meta">
+          <div class="meta-box"><span>Projet</span>My Digital Project</div>
+          <div class="meta-box"><span>Stack</span>Flutter + FastAPI</div>
+          <div class="meta-box"><span>Date</span>16 juin 2026</div>
+        </div>
+      </div>
+      <div class="subtitle">Document généré depuis le code source local du projet.</div>
+    </section>
+
+    <section class="toc page-break">
+      <h2>Sommaire</h2>
+      <div class="toc-grid">
+        <a href="#presentation">1. Présentation</a>
+        <a href="#objectifs">2. Objectifs fonctionnels</a>
+        <a href="#perimetre">3. Périmètre actuel</a>
+        <a href="#architecture">4. Architecture générale</a>
+        <a href="#frontend">5. Frontend Flutter</a>
+        <a href="#parcours">6. Parcours utilisateur</a>
+        <a href="#backend">7. Backend FastAPI</a>
+        <a href="#donnees">8. Modèle de données</a>
+        <a href="#ocr">9. OCR et filtrage</a>
+        <a href="#securite">10. Sécurité</a>
+        <a href="#paiement">11. Paiement</a>
+        <a href="#qualite">12. Tests et qualité</a>
+        <a href="#choix">13. Choix de conception</a>
+        <a href="#limites">14. Limites et évolutions</a>
+      </div>
+    </section>
+
+    <section id="presentation" class="content-section">
+      <h2>1. Présentation du projet</h2>
+      <p class="lead">Komi est une application mobile qui aide l'utilisateur à préparer ses courses, importer une liste, identifier les aliments, consulter un bilan nutritionnel et découvrir des recettes.</p>
+      <p>Le coeur du MVP est la liste de courses. L'utilisateur peut saisir des aliments, importer une image de liste via caméra ou galerie, puis laisser l'application extraire et filtrer les éléments alimentaires.</p>
+      <p>Le dépôt contient une application Flutter dans <code>lib/</code> et une API FastAPI dans <code>backend/</code>. Les ressources graphiques sont placées dans <code>assets/images/</code>, et les dossiers Android, iOS et Web permettent les builds Flutter.</p>
+    </section>
+
+    <section id="objectifs" class="content-section">
+      <h2>2. Objectifs fonctionnels</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Compte et session</h3>
+          <ul>
+            <li>Créer un compte utilisateur.</li>
+            <li>Se connecter avec e-mail et mot de passe.</li>
+            <li>Conserver la session localement pendant 30 jours.</li>
+            <li>Modifier certaines informations de profil.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Courses et recettes</h3>
+          <ul>
+            <li>Ajouter des aliments manuellement.</li>
+            <li>Analyser une image de liste de courses.</li>
+            <li>Calculer un bilan nutritionnel global.</li>
+            <li>Rechercher et sauvegarder des recettes.</li>
+          </ul>
+        </div>
+      </div>
+      <p>Le produit propose aussi un début de parcours d'abonnement Premium via Stripe Checkout.</p>
+    </section>
+
+    <section id="perimetre" class="content-section">
+      <h2>3. Périmètre actuel</h2>
+      <h3>Fonctionnel</h3>
+      <ul>
+        <li>Authentification FastAPI avec token JWT.</li>
+        <li>Stockage local du token, de l'utilisateur et de l'expiration de session.</li>
+        <li>Navigation principale en cinq onglets avec conservation de l'état.</li>
+        <li>OCR côté backend avec RapidOCR.</li>
+        <li>Filtrage alimentaire par TheMealDB, alias français et fallback local.</li>
+        <li>Recherche de recettes via TheMealDB.</li>
+        <li>Favoris persistés localement.</li>
+        <li>Création d'une session Stripe Checkout.</li>
+      </ul>
+      <h3>Partiel ou à finaliser</h3>
+      <ul>
+        <li>Suggestions de menus réellement basées sur la liste de courses.</li>
+        <li>Webhook Stripe pour passer automatiquement en Premium.</li>
+        <li>Restrictions Free/Premium.</li>
+        <li>Historique complet des listes.</li>
+        <li>Synchronisation cloud des favoris.</li>
+      </ul>
+    </section>
+
+    <section id="architecture" class="content-section page-break">
+      <h2>4. Architecture générale</h2>
+      <div class="schema">Utilisateur
+  |
+  v
+Application Flutter
+  |-- UI : auth, accueil, liste, recettes, favoris, profil
+  |-- Providers : session, favoris, liste
+  |-- Services : API Komi, OCR, profil, paiement, recettes
+  |
+  +--> API Komi FastAPI
+  |      |-- Authentification JWT
+  |      |-- Utilisateurs et profils
+  |      |-- OCR liste de courses
+  |      |-- Filtrage alimentaire
+  |      |-- Abonnement Stripe
+  |      +--> PostgreSQL ou SQLite
+  |
+  +--> TheMealDB
+         |-- Recettes
+         |-- Ingrédients de référence</div>
+      <p>Cette séparation garde l'application mobile centrée sur l'expérience utilisateur, tandis que les traitements sensibles ou lourds restent côté serveur.</p>
+      <h3>Arborescence utile</h3>
+      <pre>lib/
+  app/                 application Flutter et shell principal
+  features/auth/       écrans et modèles d'authentification
+  features/home/       écran d'accueil
+  features/scan/       liste de courses et import OCR
+  features/profile/    profil et abonnement
+  providers/           état local
+  services/            appels API
+  models/              modèles métier
+backend/
+  app/routers/         routes FastAPI
+  app/models.py        modèles SQLAlchemy
+  app/schemas.py       contrats Pydantic
+  app/security.py      sécurité et JWT
+  app/shopping_list_ocr.py
+  app/food_filter.py</pre>
+    </section>
+
+    <section id="frontend" class="content-section">
+      <h2>5. Frontend Flutter</h2>
+      <div class="pill-list">
+        <span class="pill">Flutter</span>
+        <span class="pill">Provider</span>
+        <span class="pill">SharedPreferences</span>
+        <span class="pill">HTTP</span>
+        <span class="pill">Dio</span>
+        <span class="pill">ImagePicker</span>
+        <span class="pill">UrlLauncher</span>
+      </div>
+      <p>Le point d'entrée <code>lib/main.dart</code> lance <code>KomiApp</code>. L'application initialise trois providers : <code>FavoritesProvider</code>, <code>ShoppingListProvider</code> et <code>UserSessionProvider</code>.</p>
+      <p>La navigation principale utilise un <code>IndexedStack</code>, ce qui permet de conserver l'état des pages lorsque l'utilisateur change d'onglet.</p>
+      <table>
+        <thead><tr><th>Provider</th><th>Rôle</th><th>Persistance</th></tr></thead>
+        <tbody>
+          <tr><td><code>ShoppingListProvider</code></td><td>Liste courante et bilan nutritionnel.</td><td>Mémoire locale pendant la session.</td></tr>
+          <tr><td><code>FavoritesProvider</code></td><td>Ajout, retrait et lecture des recettes favorites.</td><td><code>shared_preferences</code>.</td></tr>
+          <tr><td><code>UserSessionProvider</code></td><td>Utilisateur courant et mise à jour du profil local.</td><td><code>shared_preferences</code>.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="parcours" class="content-section">
+      <h2>6. Parcours utilisateur</h2>
+      <h3>Inscription et connexion</h3>
+      <p>Le front appelle <code>POST /api/v1/auth/register</code> ou <code>POST /api/v1/auth/login</code>. L'API renvoie un token JWT et un objet utilisateur, ensuite stockés localement.</p>
+      <h3>Accueil</h3>
+      <p>L'accueil affiche l'utilisateur, le bilan des courses, la liste actuelle et des suggestions de recettes. Le score nutritionnel est calculé localement depuis les produits présents.</p>
+      <h3>Liste de courses</h3>
+      <p>La liste accepte une saisie manuelle ou une image. Le backend renvoie les aliments acceptés et les lignes rejetées. Les aliments sont ajoutés à la liste courante.</p>
+      <h3>Recettes et favoris</h3>
+      <p>Les recettes proviennent directement de TheMealDB. Les favoris sont encodés en JSON et stockés localement.</p>
+      <h3>Profil et abonnement</h3>
+      <p>Le profil peut être mis à jour partiellement. Le bouton Premium crée une session Stripe Checkout et ouvre l'URL de paiement dans le navigateur.</p>
+    </section>
+
+    <section id="backend" class="content-section page-break">
+      <h2>7. Backend FastAPI</h2>
+      <p>Le backend expose une API versionnée sous <code>/api/v1</code> et une route <code>/health</code>. Il peut fonctionner avec PostgreSQL via Docker ou SQLite en local simple.</p>
+      <table>
+        <thead><tr><th>Domaine</th><th>Endpoints principaux</th></tr></thead>
+        <tbody>
+          <tr><td>Auth</td><td><code>POST /auth/register</code>, <code>POST /auth/login</code>, <code>POST /auth/forgot-password</code>, <code>POST /auth/reset-password</code></td></tr>
+          <tr><td>Utilisateur</td><td><code>GET /users/me</code>, <code>PATCH /users/me</code>, <code>POST /users/change-password</code></td></tr>
+          <tr><td>Courses</td><td><code>POST /shopping-lists/analyze-image</code>, <code>POST /shopping-lists/validate-items</code></td></tr>
+          <tr><td>Abonnement</td><td><code>GET /subscription/me</code>, <code>PUT /subscription/me</code>, <code>POST /subscription/checkout/premium</code></td></tr>
+          <tr><td>Factures</td><td><code>GET /invoices/me</code>, <code>POST /invoices/me/demo</code></td></tr>
+        </tbody>
+      </table>
+      <p>Les routes privées utilisent <code>get_current_user</code>, qui décode le bearer token et récupère l'utilisateur correspondant en base.</p>
+    </section>
+
+    <section id="donnees" class="content-section">
+      <h2>8. Modèle de données</h2>
+      <div class="grid">
+        <div class="card"><h3>User</h3><p>Identité, e-mail unique, profil, avatar, hash du mot de passe et date de création.</p></div>
+        <div class="card"><h3>Subscription</h3><p>Plan, statut, date de renouvellement et lien unique vers l'utilisateur.</p></div>
+        <div class="card"><h3>Invoice</h3><p>Référence, date, libellé, montant en centimes, statut et utilisateur lié.</p></div>
+        <div class="card"><h3>PasswordResetToken</h3><p>Hash du token, expiration, date de création et date d'utilisation.</p></div>
+      </div>
+      <p>SQLAlchemy permet de garder le même code métier avec PostgreSQL en Docker et SQLite en local.</p>
+    </section>
+
+    <section id="ocr" class="content-section">
+      <h2>9. OCR et filtrage alimentaire</h2>
+      <div class="schema">Image envoyée
+  -> contrôle du fichier
+  -> préparation de variantes d'image
+  -> RapidOCR sur chaque variante
+  -> choix du meilleur résultat
+  -> nettoyage des lignes
+  -> filtrage alimentaire
+  -> réponse : items + rejectedItems</div>
+      <p>Le backend prépare plusieurs versions de l'image : originale, contrastée, renforcée, binaire et binaire inversée. Il sélectionne ensuite la meilleure analyse selon le nombre d'aliments reconnus, la confiance OCR et la quantité de texte détectée.</p>
+      <p>Le filtrage alimentaire utilise TheMealDB, une liste locale de termes français et des alias français vers anglais. Les textes non alimentaires sont rejetés avant l'ajout à la liste.</p>
+    </section>
+
+    <section id="securite" class="content-section page-break">
+      <h2>10. Sécurité</h2>
+      <ul>
+        <li>Mots de passe hashés avec bcrypt.</li>
+        <li>Politique de mot de passe : longueur, majuscule, minuscule, chiffre et caractère spécial.</li>
+        <li>Refus de mots de passe communs ou contenant le nom/e-mail.</li>
+        <li>JWT signés pour les sessions API.</li>
+        <li>Routes privées protégées par bearer token.</li>
+        <li>Tokens de réinitialisation stockés sous forme hashée.</li>
+      </ul>
+      <div class="callout">
+        <strong>Avant production :</strong> remplacer la clé JWT par défaut, restreindre CORS, désactiver le lien de reset exposé en réponse, ajouter le webhook Stripe signé et limiter les tailles d'images.
+      </div>
+    </section>
+
+    <section id="paiement" class="content-section">
+      <h2>11. Paiement et abonnement</h2>
+      <p>Le plan Premium est prévu à 6 euros par mois. Le backend crée une session Stripe Checkout en mode abonnement avec <code>STRIPE_PREMIUM_PRICE_ID</code>.</p>
+      <div class="schema">Clic Premium
+  -> POST /subscription/checkout/premium
+  -> création Stripe Checkout Session
+  -> retour URL Stripe
+  -> ouverture navigateur externe</div>
+      <p>Le webhook <code>checkout.session.completed</code> reste à implémenter pour mettre à jour automatiquement le compte utilisateur après paiement.</p>
+    </section>
+
+    <section id="qualite" class="content-section">
+      <h2>12. Tests et qualité</h2>
+      <p>Les tests Flutter existants vérifient la splash page et le rendu des écrans d'authentification sur plusieurs tailles mobiles, afin de détecter les problèmes d'overflow.</p>
+      <p>Tests recommandés à ajouter : score nutritionnel, session locale expirée, inscription/connexion backend, validation alimentaire, et parcours login + ajout manuel.</p>
+    </section>
+
+    <section id="choix" class="content-section">
+      <h2>13. Choix de conception</h2>
+      <ul>
+        <li><strong>Flutter :</strong> adapté à une expérience mobile avec possibilité de démonstration web.</li>
+        <li><strong>Provider :</strong> gestion d'état simple, suffisante pour le MVP.</li>
+        <li><strong>Backend dans le même dépôt :</strong> facilite le lancement par l'équipe.</li>
+        <li><strong>OCR côté serveur :</strong> allège l'application et simplifie les améliorations futures.</li>
+        <li><strong>TheMealDB :</strong> accélère la création d'un parcours recettes complet.</li>
+      </ul>
+    </section>
+
+    <section id="limites" class="content-section">
+      <h2>14. Limites et évolutions</h2>
+      <h3>Limites connues</h3>
+      <ul>
+        <li>Liste de courses non persistée côté backend.</li>
+        <li>Données nutritionnelles génériques pour les produits inconnus.</li>
+        <li>Favoris stockés seulement localement.</li>
+        <li>Suggestions non encore calculées à partir de la liste réelle.</li>
+        <li>Premium non activé automatiquement après paiement.</li>
+      </ul>
+      <h3>Évolutions recommandées</h3>
+      <ol>
+        <li>Persister les listes de courses côté backend.</li>
+        <li>Ajouter le webhook Stripe.</li>
+        <li>Synchroniser favoris et listes avec le compte utilisateur.</li>
+        <li>Connecter une base produits plus complète, par exemple Open Food Facts.</li>
+        <li>Ajouter des tests backend et des tests d'intégration.</li>
+      </ol>
+      <h3>Annexes à joindre</h3>
+      <p>Diagrammes d'architecture, séquences auth/OCR, modèle de données, captures d'écran, Swagger, résultats de tests et extraits Docker.</p>
+    </section>
+
+    <section class="content-section">
+      <h2>Conclusion</h2>
+      <p>Komi dispose déjà d'une base solide pour un MVP : application Flutter structurée, API FastAPI fonctionnelle, authentification réelle, OCR côté serveur, recettes externes et début de parcours d'abonnement. Les choix techniques permettent de démontrer un parcours complet tout en gardant des pistes claires pour une version plus robuste.</p>
+    </section>
+
+    <div class="footer-note">Dossier généré depuis le dépôt local <code>my_digital_project_app</code>. Les annexes graphiques peuvent être ajoutées séparément au rendu final.</div>
+  </main>
+</body>
+</html>
