@@ -32,6 +32,8 @@ class User(Base):
     invoices: Mapped[list["Invoice"]] = relationship(
         "Invoice", back_populates="user", cascade="all, delete-orphan"
     )
+    
+    cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
         "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
     )
@@ -76,3 +78,17 @@ class PasswordResetToken(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship("User", back_populates="password_reset_tokens")
+    
+    
+    
+class CartItem(Base):
+    __tablename__ = "cart_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    meal_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    meal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meal_thumb: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="cart_items")

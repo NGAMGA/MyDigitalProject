@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import Base, engine, ensure_schema_compatibility
 from app.routers import auth, food_filter, invoices, subscriptions, users
+from app.routers import menus 
 
 app = FastAPI(title=settings.app_name)
 
@@ -108,3 +109,4 @@ app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(subscriptions.router, prefix=settings.api_prefix)
 app.include_router(invoices.router, prefix=settings.api_prefix)
 app.include_router(food_filter.router, prefix=settings.api_prefix)
+app.include_router(menus.router, prefix=settings.api_prefix)
