@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../auth/data/auth_models.dart';
 import '../auth/data/auth_session_store.dart';
+import '../auth/auth_choice_page.dart';
 import '../../providers/user_session_provider.dart';
 import '../../services/profile_service.dart';
 import '../../services/subscription_payment_service.dart';
@@ -27,6 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
   KomiUser? _user;
   bool _isStartingCheckout = false;
   bool _isSavingProfile = false;
+  bool _isSigningOut = false;
 
   @override
   void initState() {
@@ -192,6 +194,45 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _signOut() async {
+    if (_isSigningOut) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Se deconnecter ?'),
+        content: const Text(
+          'Tu devras te reconnecter pour acceder a ton compte.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB3261E),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Se deconnecter'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSigningOut = true);
+    await context.read<UserSessionProvider>().clear();
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const AuthChoicePage()),
+      (_) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -272,6 +313,30 @@ class _ProfilePageState extends State<ProfilePage> {
               subscription: _user?.subscription,
               isStartingCheckout: _isStartingCheckout,
               onPremiumPressed: _startPremiumCheckout,
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _isSigningOut ? null : _signOut,
+                icon: _isSigningOut
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.logout_rounded),
+                label: Text(
+                  _isSigningOut ? 'Deconnexion...' : 'Se deconnecter',
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFB3261E),
+                  side: const BorderSide(color: Color(0xFFB3261E)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

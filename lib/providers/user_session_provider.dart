@@ -24,4 +24,10 @@ class UserSessionProvider extends ChangeNotifier {
     await _sessionStore.updateUser(user);
     notifyListeners();
   }
+
+  Future<void> clear() async {
+    await _sessionStore.clear();
+    _user = null;
+    notifyListeners();
+  }
 }
