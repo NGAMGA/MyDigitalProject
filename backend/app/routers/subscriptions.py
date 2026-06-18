@@ -2,10 +2,12 @@ import time
 import uuid
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.serializers import serialize_subscription
@@ -23,7 +25,7 @@ SUBSCRIPTION_PLANS: dict[str, schemas.SubscriptionPlanPublic] = {
     "Premium": schemas.SubscriptionPlanPublic(
         name="Premium",
         label="Premium",
-        amountCents=999,
+        amountCents=600,
         billingPeriod="monthly",
         features=["Recettes avancees", "Listes de courses", "Filtrage alimentaire"],
     ),
@@ -82,6 +84,57 @@ def get_subscription(
 ) -> schemas.SubscriptionPublic:
     subscription = ensure_subscription(current_user, db)
     return serialize_subscription(subscription)
+
+
+@router.post("/checkout/premium", response_model=schemas.CheckoutSessionPublic)
+def create_premium_checkout_session(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.CheckoutSessionPublic:
+    _ = db
+
+    if not settings.stripe_secret_key or not settings.stripe_premium_price_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Paiement Stripe non configure. Ajoute STRIPE_SECRET_KEY et "
+                "STRIPE_PREMIUM_PRICE_ID dans l'environnement backend."
+            ),
+        )
+
+    stripe.api_key = settings.stripe_secret_key
+
+    try:
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            customer_email=current_user.email,
+            client_reference_id=current_user.id,
+            line_items=[
+                {
+                    "price": settings.stripe_premium_price_id,
+                    "quantity": 1,
+                }
+            ],
+            success_url=settings.stripe_success_url,
+            cancel_url=settings.stripe_cancel_url,
+            metadata={
+                "user_id": current_user.id,
+                "plan": "Premium",
+            },
+        )
+    except stripe.error.StripeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Stripe a refuse la creation du paiement: {exc.user_message or str(exc)}",
+        ) from exc
+
+    if not session.url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Stripe n'a pas renvoye d'URL de paiement.",
+        )
+
+    return schemas.CheckoutSessionPublic(url=session.url)
 
 
 @router.put("/me", response_model=schemas.SubscriptionPublic)

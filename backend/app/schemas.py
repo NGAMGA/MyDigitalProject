@@ -100,6 +100,10 @@ class SubscriptionUpdateRequest(BaseModel):
     renewal: date | None = None
 
 
+class CheckoutSessionPublic(BaseModel):
+    url: str
+
+
 class InvoicePublic(BaseModel):
     id: str
     date: str
@@ -147,3 +151,24 @@ class FoodFilterResponse(BaseModel):
     totalItems: int
     foodCount: int
     rejectedCount: int
+
+
+class ShoppingListAnalysisItem(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    confidence: float = Field(ge=0, le=1)
+
+
+class ShoppingListRejectedItem(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    reason: str = "Produit non alimentaire ignore"
+
+
+class ShoppingListAnalysisResponse(BaseModel):
+    source: str
+    rawText: str
+    items: list[ShoppingListAnalysisItem]
+    rejectedItems: list[ShoppingListRejectedItem] = Field(default_factory=list)
+
+
+class ShoppingListValidateRequest(BaseModel):
+    items: list[str] = Field(min_length=1, max_length=80)

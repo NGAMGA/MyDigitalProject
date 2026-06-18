@@ -13,8 +13,18 @@ THEMEALDB_URL = "https://www.themealdb.com/api/json/v1/1"
 def check_subscription(current_user: models.User, required: str = "Standard"):
     if current_user.subscription is None:
         raise HTTPException(status_code=403, detail="Abonnement requis")
-    plans = ["Standard", "Premium"]
-    if plans.index(current_user.subscription.plan) < plans.index(required):
+
+    plan_ranks = {
+        "Free": 0,
+        "Standard": 0,
+        "Premium": 1,
+        "Pro": 2,
+    }
+    current_rank = plan_ranks.get(current_user.subscription.plan, -1)
+    required_rank = plan_ranks.get(required)
+    if required_rank is None:
+        raise HTTPException(status_code=500, detail="Niveau d'abonnement invalide")
+    if current_rank < required_rank:
         raise HTTPException(status_code=403, detail=f"Abonnement {required} requis")
 
 
