@@ -27,6 +27,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _imagePicker = ImagePicker();
   KomiUser? _user;
   bool _isStartingCheckout = false;
+  bool _isManagingSubscription = false;
   bool _isSavingProfile = false;
   bool _isSigningOut = false;
 
@@ -105,6 +106,92 @@ class _ProfilePageState extends State<ProfilePage> {
     } finally {
       if (mounted) setState(() => _isStartingCheckout = false);
     }
+  }
+
+  Future<void> _cancelPremiumSubscription() async {
+    if (_isManagingSubscription) return;
+    final subscription = _user?.subscription;
+    final isTrial = subscription?.status.toLowerCase() == 'essai gratuit';
+    final endDate = _formatSubscriptionDate(
+      isTrial ? subscription?.trialEnd : subscription?.renewal,
+    );
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.event_busy_rounded, color: Color(0xFF9A3412)),
+        title: const Text('Résilier Premium ?'),
+        content: Text(
+          isTrial
+              ? 'Ton essai restera actif jusqu’au $endDate. Tu ne seras pas débité à cette date.'
+              : 'Ton accès Premium restera actif jusqu’au $endDate, puis repassera automatiquement à Standard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Garder Premium'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF9A3412),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirmer la résiliation'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isManagingSubscription = true);
+    try {
+      await _paymentService.cancelPremiumSubscription();
+      await _loadUser();
+      if (mounted) {
+        _showMessage(
+          'Résiliation programmée. Aucun autre débit ne sera effectué.',
+        );
+      }
+    } on SubscriptionPaymentException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isManagingSubscription = false);
+    }
+  }
+
+  Future<void> _resumePremiumSubscription() async {
+    if (_isManagingSubscription) return;
+    setState(() => _isManagingSubscription = true);
+    try {
+      await _paymentService.resumePremiumSubscription();
+      await _loadUser();
+      if (mounted) _showMessage('Ton abonnement Premium continue normalement.');
+    } on SubscriptionPaymentException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isManagingSubscription = false);
+    }
+  }
+
+  String _formatSubscriptionDate(String? rawDate) {
+    final parsed = DateTime.tryParse(rawDate ?? '');
+    if (parsed == null) return 'la date de fin indiquée';
+    const months = [
+      'janvier',
+      'février',
+      'mars',
+      'avril',
+      'mai',
+      'juin',
+      'juillet',
+      'août',
+      'septembre',
+      'octobre',
+      'novembre',
+      'décembre',
+    ];
+    return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
   }
 
   Future<void> _editTextField({
@@ -320,7 +407,10 @@ class _ProfilePageState extends State<ProfilePage> {
             _SubscriptionCards(
               subscription: _user?.subscription,
               isStartingCheckout: _isStartingCheckout,
+              isManagingSubscription: _isManagingSubscription,
               onPremiumPressed: _startPremiumCheckout,
+              onCancelPressed: _cancelPremiumSubscription,
+              onResumePressed: _resumePremiumSubscription,
             ),
             const SizedBox(height: 28),
             SizedBox(
@@ -621,12 +711,18 @@ class _SubscriptionCards extends StatelessWidget {
   const _SubscriptionCards({
     required this.subscription,
     required this.isStartingCheckout,
+    required this.isManagingSubscription,
     required this.onPremiumPressed,
+    required this.onCancelPressed,
+    required this.onResumePressed,
   });
 
   final SubscriptionInfo? subscription;
   final bool isStartingCheckout;
+  final bool isManagingSubscription;
   final VoidCallback onPremiumPressed;
+  final VoidCallback onCancelPressed;
+  final VoidCallback onResumePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -634,9 +730,35 @@ class _SubscriptionCards extends StatelessWidget {
     final status = subscription?.status.trim() ?? '';
     final normalizedPlan = plan.toLowerCase();
     final isPremium = normalizedPlan == 'premium';
+    final isTrial = status.toLowerCase() == 'essai gratuit';
+    final cancellationScheduled = subscription?.cancelAtPeriodEnd ?? false;
+    final endDate = _readableDate(
+      isTrial ? subscription?.trialEnd : subscription?.renewal,
+    );
 
     return Column(
       children: [
+        if (isPremium) ...[
+          _SubscriptionStatusBanner(
+            icon: cancellationScheduled
+                ? Icons.event_busy_rounded
+                : isTrial
+                    ? Icons.auto_awesome_rounded
+                    : Icons.verified_rounded,
+            title: cancellationScheduled
+                ? 'Résiliation programmée'
+                : isTrial
+                    ? 'Essai Premium en cours'
+                    : 'Premium actif',
+            message: cancellationScheduled
+                ? 'Ton accès reste actif jusqu’au $endDate. Tu ne seras pas débité ensuite.'
+                : isTrial
+                    ? 'Profite de toutes les fonctionnalités. Premier débit de 6 € le $endDate, sauf résiliation avant cette date.'
+                    : 'Prochain renouvellement de 6 € prévu le $endDate.',
+            warning: cancellationScheduled,
+          ),
+          const SizedBox(height: 12),
+        ],
         _PlanCard(
           title: 'Standard',
           subtitle: 'Version actuelle incluse par defaut',
@@ -656,8 +778,8 @@ class _SubscriptionCards extends StatelessWidget {
         const SizedBox(height: 12),
         _PlanCard(
           title: 'Premium',
-          subtitle: 'Pour debloquer les analyses avancees',
-          price: '6 € par mois',
+          subtitle: '7 jours gratuits, puis 6 € par mois',
+          price: isTrial ? 'Essai gratuit' : '6 € par mois',
           status: isPremium ? (status.isEmpty ? 'Actif' : status) : 'Option',
           isCurrent: isPremium,
           features: const [
@@ -666,11 +788,126 @@ class _SubscriptionCards extends StatelessWidget {
             'Analyse de 5 ingredients',
             '6 suggestions personnalisees',
           ],
-          actionLabel: isPremium ? 'Actuel' : 'Passer Premium',
+          actionLabel: isPremium ? 'Actuel' : 'Essayer gratuitement',
           isLoading: isStartingCheckout,
           onPressed: isPremium ? null : onPremiumPressed,
         ),
+        if (isPremium && (subscription?.stripeManaged ?? false)) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: cancellationScheduled
+                ? OutlinedButton.icon(
+                    onPressed: isManagingSubscription ? null : onResumePressed,
+                    icon: isManagingSubscription
+                        ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.restart_alt_rounded),
+                    label: const Text('Continuer mon abonnement'),
+                  )
+                : TextButton(
+                    onPressed: isManagingSubscription ? null : onCancelPressed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF9A3412),
+                    ),
+                    child: const Text('Résilier mon abonnement'),
+                  ),
+          ),
+        ],
       ],
+    );
+  }
+
+  static String _readableDate(String? rawDate) {
+    final parsed = DateTime.tryParse(rawDate ?? '');
+    if (parsed == null) return 'la date indiquée';
+    const months = [
+      'janvier',
+      'février',
+      'mars',
+      'avril',
+      'mai',
+      'juin',
+      'juillet',
+      'août',
+      'septembre',
+      'octobre',
+      'novembre',
+      'décembre',
+    ];
+    return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
+  }
+}
+
+class _SubscriptionStatusBanner extends StatelessWidget {
+  const _SubscriptionStatusBanner({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.warning,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final bool warning;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = warning ? const Color(0xFF9A3412) : const Color(0xFF176B3A);
+    final background =
+        warning ? const Color(0xFFFFF7ED) : const Color(0xFFF0F8EC);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: color, size: 21),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: Color(0xFF4A4A4A),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

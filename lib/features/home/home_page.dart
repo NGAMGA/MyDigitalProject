@@ -797,7 +797,7 @@ class _RecipeCard extends StatelessWidget {
                           width: 23,
                           height: 23,
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.42),
+                            color: Colors.black.withOpacity(0.42),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

@@ -45,6 +45,9 @@ class SubscriptionInfo {
     required this.plan,
     required this.status,
     required this.renewal,
+    this.trialEnd = '-',
+    this.cancelAtPeriodEnd = false,
+    this.stripeManaged = false,
   });
 
   factory SubscriptionInfo.fromJson(Map<String, dynamic> json) {
@@ -52,17 +55,26 @@ class SubscriptionInfo {
       plan: json['plan'] as String? ?? 'Free',
       status: json['status'] as String? ?? '-',
       renewal: json['renewal'] as String? ?? '-',
+      trialEnd: json['trialEnd'] as String? ?? '-',
+      cancelAtPeriodEnd: json['cancelAtPeriodEnd'] as bool? ?? false,
+      stripeManaged: json['stripeManaged'] as bool? ?? false,
     );
   }
 
   final String plan;
   final String status;
   final String renewal;
+  final String trialEnd;
+  final bool cancelAtPeriodEnd;
+  final bool stripeManaged;
 
   Map<String, dynamic> toJson() => {
         'plan': plan,
         'status': status,
         'renewal': renewal,
+        'trialEnd': trialEnd,
+        'cancelAtPeriodEnd': cancelAtPeriodEnd,
+        'stripeManaged': stripeManaged,
       };
 }
 

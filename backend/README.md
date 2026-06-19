@@ -36,6 +36,8 @@ POST /api/v1/shopping-lists/analyze-image
 POST /api/v1/shopping-lists/validate-items
 POST /api/v1/subscription/checkout/premium
 POST /api/v1/subscription/webhook
+POST /api/v1/subscription/me/cancel
+POST /api/v1/subscription/me/resume
 POST /api/v1/menus/suggestions
 GET  /api/v1/menus/search
 GET  /api/v1/menus/cart
@@ -79,6 +81,7 @@ $env:DATABASE_URL="sqlite:///./komi_dev.db"
 $env:STRIPE_SECRET_KEY="sk_test_..."
 $env:STRIPE_PREMIUM_PRICE_ID="price_..."
 $env:STRIPE_WEBHOOK_SECRET="whsec_..."
+$env:STRIPE_TRIAL_DAYS="7"
 .\.venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -115,10 +118,15 @@ Pour Stripe :
 - le front appelle `POST /api/v1/subscription/checkout/premium`
 - la route exige un token utilisateur
 - le backend utilise `STRIPE_SECRET_KEY` et `STRIPE_PREMIUM_PRICE_ID`
-- le prix Stripe doit etre un Price recurrent configure a `6 € / mois`
+- le prix Stripe doit etre un Price recurrent configure a `6 EUR / mois`
+- le premier abonnement d'un compte commence par un essai gratuit de 7 jours
+- Stripe collecte le moyen de paiement pendant le Checkout
+- le premier debit est automatique a la fin de l'essai si aucune resiliation n'est programmee
 - la route renvoie `{ "url": "https://checkout.stripe.com/..." }`
 - si Stripe n'est pas configure, la route renvoie une erreur 503 lisible
-- le webhook `checkout.session.completed` active ensuite le plan Premium
+- les webhooks Checkout et Subscription gardent le statut local synchronise avec Stripe
+- la resiliation utilise `cancel_at_period_end=true` : l'acces reste disponible jusqu'a la date de fin
+- une resiliation programmee peut etre retiree avant l'echeance
 
 Variables optionnelles :
 

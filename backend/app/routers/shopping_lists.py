@@ -16,7 +16,7 @@ def _is_premium(user: models.User) -> bool:
     return bool(
         subscription
         and subscription.plan in {"Premium", "Pro"}
-        and subscription.status == "Actif"
+        and subscription.status in {"Actif", "Essai gratuit"}
     )
 
 
@@ -28,7 +28,10 @@ def _active_list(user_id: str, db: Session) -> models.ShoppingList | None:
             models.ShoppingList.user_id == user_id,
             models.ShoppingList.is_active.is_(True),
         )
-        .order_by(models.ShoppingList.updated_at.desc())
+        .order_by(
+            models.ShoppingList.updated_at.desc(),
+            models.ShoppingList.id.desc(),
+        )
     ).unique().scalars().first()
 
 
@@ -91,7 +94,10 @@ def get_list_history(
         select(models.ShoppingList)
         .options(joinedload(models.ShoppingList.items).joinedload(models.ShoppingListProduct.product))
         .where(models.ShoppingList.user_id == current_user.id)
-        .order_by(models.ShoppingList.updated_at.desc())
+        .order_by(
+            models.ShoppingList.updated_at.desc(),
+            models.ShoppingList.id.desc(),
+        )
     ).unique().scalars().all()
     return [_serialize_list(item) for item in lists]
 

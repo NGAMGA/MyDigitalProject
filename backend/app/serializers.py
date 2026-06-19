@@ -38,6 +38,9 @@ def serialize_subscription(subscription: models.Subscription | None) -> schemas.
         plan=subscription.plan,
         status=subscription.status,
         renewal=format_renewal(subscription.renewal_date),
+        trialEnd=format_renewal(subscription.trial_end_date),
+        cancelAtPeriodEnd=subscription.cancel_at_period_end,
+        stripeManaged=bool(subscription.stripe_subscription_id),
     )
 
 

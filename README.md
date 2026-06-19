@@ -42,6 +42,9 @@ Ce qui fonctionne aujourd'hui :
 - panier de recettes avec generation d'une liste de courses
 - abonnement Standard visible comme version actuelle par defaut
 - creation d'une session Stripe Checkout pour passer Premium
+- essai Premium de 7 jours avec moyen de paiement collecte par Stripe
+- debit automatique de 6 EUR par mois apres l'essai si l'utilisateur ne resilie pas
+- resiliation et reactivation depuis la page profil
 - liste de courses persistante par utilisateur
 - suggestions calculees depuis les ingredients de la liste reelle
 - limites Standard / Premium appliquees aux recommandations et a l'historique
@@ -50,7 +53,6 @@ Ce qui fonctionne aujourd'hui :
 Ce qui est encore partiel ou maquette :
 - donnees nutritionnelles generiques pour les produits inconnus
 - synchronisation des favoris entre appareils
-- activation Premium automatique dependante du webhook Stripe
 
 ## Architecture rapide
 
@@ -152,9 +154,13 @@ flutter test
 ### Abonnement et Stripe
 
 - le plan Standard est affiche comme la version actuelle incluse par defaut
-- le plan Premium est affiche a `6 € par mois`
+- le plan Premium comprend 7 jours gratuits, puis coute `6 EUR par mois`
 - le bouton Premium appelle `POST /api/v1/subscription/checkout/premium`
-- le backend cree une session Stripe Checkout en mode abonnement
+- le backend cree une session Stripe Checkout en mode abonnement avec `trial_period_days=7`
+- Stripe collecte la carte pendant l'inscription, sans debit immediat
+- sans resiliation, le premier debit intervient automatiquement a la fin des 7 jours
+- `POST /api/v1/subscription/me/cancel` programme la resiliation a la fin de l'essai ou de la periode payee
+- `POST /api/v1/subscription/me/resume` annule une resiliation programmee
 - Stripe renvoie une URL de paiement que l'app ouvre dans le navigateur
 
 Variables backend necessaires :
@@ -163,11 +169,15 @@ Variables backend necessaires :
 $env:STRIPE_SECRET_KEY="sk_test_..."
 $env:STRIPE_PREMIUM_PRICE_ID="price_..."
 $env:STRIPE_WEBHOOK_SECRET="whsec_..."
+$env:STRIPE_TRIAL_DAYS="7"
 $env:STRIPE_SUCCESS_URL="http://127.0.0.1:5454/#/subscription/success"
 $env:STRIPE_CANCEL_URL="http://127.0.0.1:5454/#/subscription/cancel"
 ```
 
-Le webhook Stripe `checkout.session.completed` active automatiquement le plan Premium. En developpement local, il faut transmettre les evenements avec Stripe CLI vers `/api/v1/subscription/webhook`.
+Les webhooks Stripe `checkout.session.completed`, `customer.subscription.created`,
+`customer.subscription.updated` et `customer.subscription.deleted` synchronisent
+l'essai, le renouvellement et la resiliation. En developpement local, il faut
+transmettre les evenements avec Stripe CLI vers `/api/v1/subscription/webhook`.
 
 ## Notes pour l'equipe
 

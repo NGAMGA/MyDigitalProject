@@ -62,6 +62,46 @@ class SubscriptionPaymentService {
     return Uri.parse(url);
   }
 
+  Future<void> cancelPremiumSubscription() async {
+    await _postSubscriptionAction(
+      '/subscription/me/cancel',
+      fallbackMessage: 'Impossible de programmer la résiliation.',
+    );
+  }
+
+  Future<void> resumePremiumSubscription() async {
+    await _postSubscriptionAction(
+      '/subscription/me/resume',
+      fallbackMessage: 'Impossible de réactiver l’abonnement.',
+    );
+  }
+
+  Future<void> _postSubscriptionAction(
+    String path, {
+    required String fallbackMessage,
+  }) async {
+    final token = await _sessionStore.readToken();
+    if (token == null || token.isEmpty) {
+      throw const SubscriptionPaymentException(
+        'Session expirée. Reconnecte-toi pour gérer ton abonnement.',
+      );
+    }
+
+    final response = await _httpClient.post(
+      Uri.parse('$baseUrl$path'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw SubscriptionPaymentException(
+        _extractErrorMessage(data, fallbackMessage: fallbackMessage),
+      );
+    }
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response) {
     if (response.body.isEmpty) return const {};
 
@@ -70,9 +110,12 @@ class SubscriptionPaymentService {
     return const {};
   }
 
-  String _extractErrorMessage(Map<String, dynamic> data) {
+  String _extractErrorMessage(
+    Map<String, dynamic> data, {
+    String fallbackMessage = 'Impossible de preparer le paiement Stripe.',
+  }) {
     final detail = data['detail'];
     if (detail is String && detail.trim().isNotEmpty) return detail;
-    return 'Impossible de preparer le paiement Stripe.';
+    return fallbackMessage;
   }
 }

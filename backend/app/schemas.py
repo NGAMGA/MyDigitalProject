@@ -8,6 +8,9 @@ class SubscriptionPublic(BaseModel):
     plan: str
     status: str
     renewal: str = "-"
+    trialEnd: str = "-"
+    cancelAtPeriodEnd: bool = False
+    stripeManaged: bool = False
 
 
 class SubscriptionPlanPublic(BaseModel):

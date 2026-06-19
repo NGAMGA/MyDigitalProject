@@ -24,6 +24,13 @@ def check_subscription(current_user: models.User, required: str = "Standard"):
     required_rank = plan_ranks.get(required)
     if required_rank is None:
         raise HTTPException(status_code=500, detail="Niveau d'abonnement invalide")
+    if required_rank > 0 and getattr(
+        current_user.subscription, "status", "Actif"
+    ) not in {
+        "Actif",
+        "Essai gratuit",
+    }:
+        raise HTTPException(status_code=403, detail="Abonnement Premium inactif")
     if current_rank < required_rank:
         raise HTTPException(status_code=403, detail=f"Abonnement {required} requis")
 

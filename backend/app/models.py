@@ -50,6 +50,15 @@ class Subscription(Base):
     plan: Mapped[str] = mapped_column(String(30), default="Free", nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="Actif", nullable=False)
     renewal_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    trial_end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
+    cancel_at_period_end: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    has_used_trial: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
     user: Mapped[User] = relationship("User", back_populates="subscription")
