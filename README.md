@@ -43,7 +43,7 @@ Ce qui fonctionne aujourd'hui :
 - abonnement Standard visible comme version actuelle par defaut
 - creation d'une session Stripe Checkout pour passer Premium
 - essai Premium de 7 jours avec moyen de paiement collecte par Stripe
-- debit automatique de 6 EUR par mois apres l'essai si l'utilisateur ne resilie pas
+- debit automatique de 5,99 EUR par mois apres l'essai si l'utilisateur ne resilie pas
 - resiliation et reactivation depuis la page profil
 - liste de courses persistante par utilisateur
 - suggestions calculees depuis les ingredients de la liste reelle
@@ -154,7 +154,7 @@ flutter test
 ### Abonnement et Stripe
 
 - le plan Standard est affiche comme la version actuelle incluse par defaut
-- le plan Premium comprend 7 jours gratuits, puis coute `6 EUR par mois`
+- le plan Premium comprend 7 jours gratuits, puis coute `5,99 EUR par mois`
 - le bouton Premium appelle `POST /api/v1/subscription/checkout/premium`
 - le backend cree une session Stripe Checkout en mode abonnement avec `trial_period_days=7`
 - Stripe collecte la carte pendant l'inscription, sans debit immediat

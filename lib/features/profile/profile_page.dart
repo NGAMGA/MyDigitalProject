@@ -753,8 +753,8 @@ class _SubscriptionCards extends StatelessWidget {
             message: cancellationScheduled
                 ? 'Ton accès reste actif jusqu’au $endDate. Tu ne seras pas débité ensuite.'
                 : isTrial
-                    ? 'Profite de toutes les fonctionnalités. Premier débit de 6 € le $endDate, sauf résiliation avant cette date.'
-                    : 'Prochain renouvellement de 6 € prévu le $endDate.',
+                    ? 'Profite de toutes les fonctionnalités. Premier débit de 5,99 € le $endDate, sauf résiliation avant cette date.'
+                    : 'Prochain renouvellement de 5,99 € prévu le $endDate.',
             warning: cancellationScheduled,
           ),
           const SizedBox(height: 12),
@@ -778,8 +778,8 @@ class _SubscriptionCards extends StatelessWidget {
         const SizedBox(height: 12),
         _PlanCard(
           title: 'Premium',
-          subtitle: '7 jours gratuits, puis 6 € par mois',
-          price: isTrial ? 'Essai gratuit' : '6 € par mois',
+          subtitle: '7 jours gratuits, puis 5,99 € par mois',
+          price: isTrial ? 'Essai gratuit' : '5,99 € par mois',
           status: isPremium ? (status.isEmpty ? 'Actif' : status) : 'Option',
           isCurrent: isPremium,
           features: const [

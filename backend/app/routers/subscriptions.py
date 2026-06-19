@@ -30,7 +30,7 @@ SUBSCRIPTION_PLANS: dict[str, schemas.SubscriptionPlanPublic] = {
     "Premium": schemas.SubscriptionPlanPublic(
         name="Premium",
         label="Premium",
-        amountCents=600,
+        amountCents=599,
         billingPeriod="monthly",
         features=[
             "Plusieurs listes de courses",

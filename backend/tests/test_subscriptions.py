@@ -36,7 +36,7 @@ class SubscriptionsTest(unittest.TestCase):
         plans = list_subscription_plans()
 
         self.assertEqual([plan.name for plan in plans], ["Free", "Premium", "Pro"])
-        self.assertEqual(plan_to_amount_cents("Premium"), 600)
+        self.assertEqual(plan_to_amount_cents("Premium"), 599)
 
     def test_renewal_date_rules(self) -> None:
         custom_date = date(2026, 7, 1)
