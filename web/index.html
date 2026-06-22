@@ -34,23 +34,45 @@
   <title>Komi</title>
   <link rel="manifest" href="manifest.json?v=2">
   <style>
-    #install-komi {
+    #install-komi-banner {
       position: fixed;
       right: 14px;
       bottom: calc(82px + env(safe-area-inset-bottom));
       z-index: 999999;
       display: none;
       align-items: center;
-      gap: 7px;
-      min-height: 42px;
-      padding: 0 15px;
-      border: 0;
+      gap: 4px;
+      padding: 4px;
       border-radius: 999px;
       background: #062f1a;
-      color: #ddf577;
       box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+    }
+
+    #install-komi,
+    #dismiss-install-komi {
+      min-height: 36px;
+      border: 0;
+      background: transparent;
+      color: #ddf577;
       font: 700 14px/1 system-ui, sans-serif;
       cursor: pointer;
+    }
+
+    #install-komi {
+      padding: 0 10px 0 12px;
+    }
+
+    #dismiss-install-komi {
+      width: 36px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 19px;
+      font-weight: 500;
+    }
+
+    #dismiss-install-komi:hover,
+    #dismiss-install-komi:focus-visible {
+      background: rgba(221, 245, 119, .16);
     }
 
     #install-help {
@@ -71,7 +93,7 @@
     }
 
     @media (display-mode: standalone) {
-      #install-komi,
+      #install-komi-banner,
       #install-help {
         display: none !important;
       }
@@ -79,7 +101,10 @@
   </style>
 </head>
 <body>
-  <button id="install-komi" type="button" aria-label="Installer Komi">＋ Installer Komi</button>
+  <div id="install-komi-banner" role="region" aria-label="Installer l'application Komi">
+    <button id="install-komi" type="button">＋ Installer Komi</button>
+    <button id="dismiss-install-komi" type="button" aria-label="Ne pas installer Komi">×</button>
+  </div>
   <div id="install-help" role="status">
     Sur iPhone : appuie sur Partager, puis « Sur l’écran d’accueil ».
   </div>
