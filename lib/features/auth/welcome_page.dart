@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -101,7 +101,7 @@ class _WelcomePageState extends State<WelcomePage>
                         Text(
                           'Votre assistant nutritionnel personnel',
                           style: TextStyle(
-                            color: komiGreen.withOpacity(0.78),
+                            color: komiGreen.withValues(alpha: 0.78),
                             fontSize: 11.5,
                             height: 1,
                             fontWeight: FontWeight.w500,

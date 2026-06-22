@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def _build_reset_url(token: str) -> str:
     base_url = settings.frontend_base_url.rstrip("/")
-    return f"{base_url}/pages/auth.html?mode=reset&token={quote(token, safe='')}"
+    return f"{base_url}/?resetToken={quote(token, safe='')}"
 
 
 @router.post("/register", response_model=schemas.TokenResponse, status_code=status.HTTP_201_CREATED)

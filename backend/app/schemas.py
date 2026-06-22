@@ -97,6 +97,13 @@ class ChangePasswordRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class DeleteAccountRequest(BaseModel):
+    current_password: str = Field(alias="currentPassword", min_length=1, max_length=128)
+    confirmation: Literal["SUPPRIMER"]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class SubscriptionUpdateRequest(BaseModel):
     plan: Literal["Free", "Premium", "Pro"]
     status: Literal["Actif", "Annule", "Expire", "En pause"] = "Actif"

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
     password_reset_token_expire_minutes: int = 30
-    frontend_base_url: str = "http://127.0.0.1:4173"
+    frontend_base_url: str = "http://127.0.0.1:5454"
     expose_password_reset_link_in_response: bool = True
     smtp_host: str = ""
     smtp_port: int = 587

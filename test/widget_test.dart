@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:my_digital_project/app/komi_app.dart';
 import 'package:my_digital_project/features/auth/auth_choice_page.dart';
 import 'package:my_digital_project/features/auth/login_page.dart';
+import 'package:my_digital_project/features/auth/forgot_password_page.dart';
+import 'package:my_digital_project/features/auth/reset_password_page.dart';
 import 'package:my_digital_project/features/auth/signup_page.dart';
 import 'package:my_digital_project/features/auth/welcome_page.dart';
 
@@ -34,6 +36,8 @@ void main() {
         LoginPage(),
         SignUpPage(),
         WelcomePage(),
+        ForgotPasswordPage(),
+        ResetPasswordPage(token: 'test-token'),
       ]) {
         await tester.pumpWidget(
           const MaterialApp(

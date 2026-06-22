@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -797,7 +797,7 @@ class _RecipeCard extends StatelessWidget {
                           width: 23,
                           height: 23,
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.42),
+                            color: Colors.black.withValues(alpha: 0.42),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

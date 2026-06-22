@@ -22,6 +22,7 @@ from app.routers.subscriptions import (
     list_subscription_plans,
     normalize_renewal_date,
     plan_to_amount_cents,
+    resume_subscription,
     update_subscription,
 )
 
@@ -186,6 +187,52 @@ class SubscriptionsTest(unittest.TestCase):
         modify_subscription.assert_called_once_with(
             "sub_test",
             cancel_at_period_end=True,
+        )
+        session.close()
+
+    def test_resume_removes_scheduled_cancellation(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        session = sessionmaker(bind=engine)()
+        user = models.User(
+            id="resume-user",
+            full_name="Resume User",
+            email="resume@example.com",
+            password_hash="unused",
+        )
+        user.subscription = models.Subscription(
+            plan="Premium",
+            status="Actif",
+            renewal_date=date(2026, 7, 1),
+            stripe_customer_id="cus_resume",
+            stripe_subscription_id="sub_resume",
+            cancel_at_period_end=True,
+        )
+        session.add(user)
+        session.commit()
+        period_end = int(
+            datetime(2026, 7, 1, tzinfo=timezone.utc).timestamp()
+        )
+
+        with (
+            patch.object(settings, "stripe_secret_key", "sk_test"),
+            patch(
+                "app.routers.subscriptions.stripe.Subscription.modify",
+                return_value={
+                    "id": "sub_resume",
+                    "customer": "cus_resume",
+                    "status": "active",
+                    "items": {"data": [{"current_period_end": period_end}]},
+                    "cancel_at_period_end": False,
+                },
+            ) as modify_subscription,
+        ):
+            response = resume_subscription(user, session)
+
+        self.assertFalse(response.cancelAtPeriodEnd)
+        modify_subscription.assert_called_once_with(
+            "sub_resume",
+            cancel_at_period_end=False,
         )
         session.close()
 

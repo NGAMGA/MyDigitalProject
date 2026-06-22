@@ -6,6 +6,7 @@ import '../../providers/user_session_provider.dart';
 import 'data/auth_api_client.dart';
 import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
+import 'forgot_password_page.dart';
 import 'signup_page.dart';
 import 'social_auth_buttons.dart';
 
@@ -126,7 +127,22 @@ class _LoginPageState extends State<LoginPage> {
                                       textInputAction: TextInputAction.done,
                                       onSubmitted: (_) => _submit(),
                                     ),
-                                    const SizedBox(height: 12),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                const ForgotPasswordPage(),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Mot de passe oublie ?',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
                                     _LoginMainButton(
                                       isLoading: _isSubmitting,
                                       onPressed: _submit,

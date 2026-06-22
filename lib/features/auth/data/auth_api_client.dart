@@ -55,19 +55,45 @@ class AuthApiClient {
     );
   }
 
+  Future<ForgotPasswordResult> forgotPassword(String email) async {
+    final data = await _post(
+      '/auth/forgot-password',
+      body: {'email': email},
+    );
+    return ForgotPasswordResult(
+      detail: data['detail']?.toString() ?? 'Demande envoyee.',
+      debugResetLink: data['debugResetLink']?.toString(),
+    );
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    await _post(
+      '/auth/reset-password',
+      body: {'token': token, 'password': password},
+    );
+  }
+
   Future<AuthSession> _postAuth(
     String path, {
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse('$baseUrl$path');
+    return AuthSession.fromJson(await _post(path, body: body));
+  }
 
+  Future<Map<String, dynamic>> _post(
+    String path, {
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path');
     try {
       final response = await _httpClient.post(
         uri,
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode(body),
       );
-
       final data = _decodeResponse(response);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw AuthApiException(
@@ -75,8 +101,7 @@ class AuthApiClient {
           statusCode: response.statusCode,
         );
       }
-
-      return AuthSession.fromJson(data);
+      return data;
     } on AuthApiException {
       rethrow;
     } catch (_) {
@@ -99,4 +124,14 @@ class AuthApiClient {
     if (detail is String && detail.trim().isNotEmpty) return detail;
     return 'Une erreur est survenue.';
   }
+}
+
+class ForgotPasswordResult {
+  const ForgotPasswordResult({
+    required this.detail,
+    this.debugResetLink,
+  });
+
+  final String detail;
+  final String? debugResetLink;
 }

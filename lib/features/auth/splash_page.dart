@@ -6,6 +6,7 @@ import '../../app/komi_app.dart';
 import 'auth_choice_page.dart';
 import 'data/auth_session_store.dart';
 import 'komi_brand.dart';
+import 'reset_password_page.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -39,6 +40,16 @@ class _SplashPageState extends State<SplashPage>
   }
 
   Future<void> _resolveInitialRoute() async {
+    final resetToken = Uri.base.queryParameters['resetToken'];
+    if (resetToken != null && resetToken.isNotEmpty) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => ResetPasswordPage(token: resetToken),
+        ),
+      );
+      return;
+    }
     final hasValidSession = await _sessionStore.hasValidSession();
     if (!mounted) return;
 

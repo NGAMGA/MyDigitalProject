@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/meal.dart';
@@ -23,7 +23,7 @@ class MealCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.08),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),

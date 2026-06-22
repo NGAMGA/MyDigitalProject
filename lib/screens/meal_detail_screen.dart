@@ -5,6 +5,9 @@ import '../models/meal.dart';
 import '../services/meal_api_service.dart';
 import '../services/translation_service.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/user_session_provider.dart';
+import '../services/menu_cart_service.dart';
+import 'menu_cart_screen.dart';
 
 class MealDetailScreen extends StatefulWidget {
   final String mealId;
@@ -31,6 +34,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   String _selectedLang = 'en';
   String? _translatedInstructions;
   bool _isTranslating = false;
+  bool _isAddingToCart = false;
+  bool _isLoadingNutritionTips = false;
+  List<String> _nutritionTips = const [];
+  String? _nutritionTipsError;
   String? _translationError;
 
   @override
@@ -46,6 +53,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         _meal = meal;
         _isLoading = false;
       });
+      if (meal != null) {
+        await _loadNutritionTips(meal);
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -54,12 +64,32 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     }
   }
 
+  Future<void> _loadNutritionTips(Meal meal) async {
+    final plan = context.read<UserSessionProvider>().user?.subscription.plan;
+    if (plan?.toLowerCase() != 'premium') return;
+    setState(() {
+      _isLoadingNutritionTips = true;
+      _nutritionTipsError = null;
+    });
+    try {
+      final tips = await MenuCartService().getNutritionTips(meal.ingredients);
+      if (!mounted) return;
+      setState(() => _nutritionTips = tips);
+    } on MenuCartException catch (error) {
+      if (!mounted) return;
+      setState(() => _nutritionTipsError = error.message);
+    } finally {
+      if (mounted) setState(() => _isLoadingNutritionTips = false);
+    }
+  }
+
   String _buildDescription(Meal meal) {
     final parts = <String>[];
     if (meal.area != null) parts.add('Originaire de la cuisine ${meal.area}');
     if (meal.category != null) parts.add('catégorie ${meal.category}');
     if (meal.tags != null && meal.tags!.isNotEmpty) {
-      final tags = meal.tags!.split(',').take(3).map((t) => t.trim()).join(', ');
+      final tags =
+          meal.tags!.split(',').take(3).map((t) => t.trim()).join(', ');
       parts.add('tags : $tags');
     }
     if (parts.isEmpty) {
@@ -172,7 +202,8 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                   title: Text(
                     entry.value,
                     style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                       color: colorScheme.onSurface,
                     ),
                   ),
@@ -198,13 +229,33 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     return TranslationService.supportedLanguages[_selectedLang] ?? 'EN';
   }
 
+  Future<void> _addToCart() async {
+    final meal = _meal;
+    if (meal == null || _isAddingToCart) return;
+    setState(() => _isAddingToCart = true);
+    try {
+      await MenuCartService().addMeal(meal);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${meal.name} ajoute au panier.')),
+      );
+    } on MenuCartException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isAddingToCart = false);
+    }
+  }
+
   List<String> get _instructionSteps {
     return _stepsFromText(_displayedInstructions);
   }
 
   List<String> _stepsFromText(String text) {
     final normalized =
-    text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+        text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
     if (normalized.isEmpty) return [];
 
     final stepMatches = RegExp(
@@ -222,9 +273,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         .split('\n')
         .map((step) => step.trim())
         .where((step) =>
-    step.isNotEmpty &&
-        !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+', caseSensitive: false)
-            .hasMatch(step))
+            step.isNotEmpty &&
+            !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+', caseSensitive: false)
+                .hasMatch(step))
         .toList();
     if (byLine.length > 1) return byLine;
 
@@ -232,9 +283,9 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         .split(RegExp(r'(?<=[.!?])\s+'))
         .map((step) => step.trim())
         .where((step) =>
-    step.length > 3 &&
-        !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+$', caseSensitive: false)
-            .hasMatch(step))
+            step.length > 3 &&
+            !RegExp(r'^(?:STEP|ETAPE|ÉTAPE)\s*\d+$', caseSensitive: false)
+                .hasMatch(step))
         .toList();
   }
 
@@ -314,6 +365,15 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
             backgroundColor: colorScheme.primary,
             foregroundColor: Colors.white,
             actions: [
+              IconButton(
+                tooltip: 'Voir le panier',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MenuCartScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.shopping_basket_outlined),
+              ),
               Consumer<FavoritesProvider>(
                 builder: (context, favProvider, child) {
                   final isFav = favProvider.isFavorite(meal.id);
@@ -356,15 +416,15 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                 children: [
                   meal.thumbnail != null
                       ? CachedNetworkImage(
-                    imageUrl: meal.thumbnail!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) {
-                      return Container(color: const Color(0xFFE8F5EE));
-                    },
-                    errorWidget: (context, url, error) {
-                      return Container(color: const Color(0xFFE8F5EE));
-                    },
-                  )
+                          imageUrl: meal.thumbnail!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) {
+                            return Container(color: const Color(0xFFE8F5EE));
+                          },
+                          errorWidget: (context, url, error) {
+                            return Container(color: const Color(0xFFE8F5EE));
+                          },
+                        )
                       : Container(color: const Color(0xFFE8F5EE)),
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -399,6 +459,30 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: _isAddingToCart ? null : _addToCart,
+                    icon: _isAddingToCart
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.add_shopping_cart_rounded),
+                    label: Text(
+                      _isAddingToCart
+                          ? 'Ajout en cours...'
+                          : 'Ajouter au panier de recettes',
+                    ),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -427,8 +511,8 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                                   i < complexity.floor()
                                       ? Icons.star_rounded
                                       : (i < complexity
-                                      ? Icons.star_half_rounded
-                                      : Icons.star_outline_rounded),
+                                          ? Icons.star_half_rounded
+                                          : Icons.star_outline_rounded),
                                   color: const Color(0xFFFFB800),
                                   size: 26,
                                 );
@@ -506,6 +590,8 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                  _buildNutritionSection(theme, colorScheme, meal),
+                  const SizedBox(height: 24),
                   if (meal.instructions != null) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -552,6 +638,109 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     );
   }
 
+  Widget _buildNutritionSection(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    Meal meal,
+  ) {
+    final isPremium = context
+            .watch<UserSessionProvider>()
+            .user
+            ?.subscription
+            .plan
+            .toLowerCase() ==
+        'premium';
+    if (!isPremium) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: _softCardDecoration(theme, colorScheme),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.workspace_premium_rounded, color: Color(0xFFFF9800)),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Les conseils nutritionnels personnalises par recette '
+                'sont disponibles avec Premium.',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_isLoadingNutritionTips) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: _softCardDecoration(theme, colorScheme),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Analyse nutritionnelle...'),
+          ],
+        ),
+      );
+    }
+    if (_nutritionTipsError != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: _softCardDecoration(theme, colorScheme),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_nutritionTipsError!),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => _loadNutritionTips(meal),
+              child: const Text('Reessayer'),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: _softCardDecoration(theme, colorScheme),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.eco_rounded, color: Color(0xFF2E7D52)),
+              SizedBox(width: 8),
+              Text(
+                'Conseils nutritionnels Premium',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._nutritionTips.map(
+            (tip) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('â€¢ '),
+                  Expanded(child: Text(tip)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _tag(IconData icon, String label) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
@@ -579,10 +768,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   }
 
   Widget _buildInstructionsCard(
-      ThemeData theme,
-      ColorScheme colorScheme,
-      Meal meal,
-      ) {
+    ThemeData theme,
+    ColorScheme colorScheme,
+    Meal meal,
+  ) {
     if (_isTranslating) {
       return Container(
         width: double.infinity,
@@ -684,7 +873,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       borderRadius: BorderRadius.circular(18),
       boxShadow: [
         BoxShadow(
-          color: colorScheme.primary.withOpacity(0.08),
+          color: colorScheme.primary.withValues(alpha: 0.08),
           blurRadius: 10,
           offset: const Offset(0, 3),
         ),

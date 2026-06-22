@@ -93,6 +93,77 @@ class ProfileService {
     }
   }
 
+  Future<void> deleteMe({
+    required String currentPassword,
+  }) async {
+    final token = await _sessionStore.readToken();
+    if (token == null || token.isEmpty) {
+      throw const ProfileServiceException(
+        'Session expiree. Reconnecte-toi pour supprimer ton compte.',
+      );
+    }
+
+    try {
+      final request = http.Request(
+        'DELETE',
+        Uri.parse('$baseUrl/users/me'),
+      )
+        ..headers.addAll({
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        })
+        ..body = jsonEncode({
+          'currentPassword': currentPassword,
+          'confirmation': 'SUPPRIMER',
+        });
+      final streamedResponse = await _httpClient.send(request);
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = _decodeResponse(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ProfileServiceException(_extractErrorMessage(data));
+      }
+    } on ProfileServiceException {
+      rethrow;
+    } catch (_) {
+      throw const ProfileServiceException(
+        'Impossible de joindre le serveur Komi.',
+      );
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String nextPassword,
+  }) async {
+    final token = await _sessionStore.readToken();
+    if (token == null || token.isEmpty) {
+      throw const ProfileServiceException('Session expiree.');
+    }
+    try {
+      final response = await _httpClient.post(
+        Uri.parse('$baseUrl/users/change-password'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'nextPassword': nextPassword,
+        }),
+      );
+      final data = _decodeResponse(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ProfileServiceException(_extractErrorMessage(data));
+      }
+    } on ProfileServiceException {
+      rethrow;
+    } catch (_) {
+      throw const ProfileServiceException(
+        'Impossible de joindre le serveur Komi.',
+      );
+    }
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response) {
     if (response.body.isEmpty) return const {};
 

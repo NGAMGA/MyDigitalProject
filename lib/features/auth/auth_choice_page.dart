@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'komi_brand.dart';
 import 'login_page.dart';
@@ -339,7 +339,7 @@ class AuthScaffold extends StatelessWidget {
                     fontSize: 15,
                     height: 1.45,
                     fontWeight: FontWeight.w600,
-                    color: komiGreen.withOpacity(0.68),
+                    color: komiGreen.withValues(alpha: 0.68),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -399,7 +399,7 @@ class _SoftCircle extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.24),
+        color: color.withValues(alpha: 0.24),
         shape: BoxShape.circle,
       ),
     );
@@ -431,7 +431,7 @@ class AuthTextField extends StatelessWidget {
           labelText: label,
           prefixIcon: Icon(icon),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.88),
+          fillColor: Colors.white.withValues(alpha: 0.88),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(22),
             borderSide: BorderSide.none,

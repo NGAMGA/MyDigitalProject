@@ -25,7 +25,6 @@ class TranslationService {
     if (_cache.containsKey(cacheKey)) return _cache[cacheKey]!;
 
     try {
-
       final chunks = _splitText(text, 480);
       final translated = <String>[];
 

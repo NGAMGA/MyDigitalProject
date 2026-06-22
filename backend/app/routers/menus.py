@@ -199,7 +199,7 @@ async def generate_shopping_list(
     if not cart_items:
         raise HTTPException(status_code=400, detail="Le panier est vide")
 
-    shopping_list = []
+    shopping_list_by_name = {}
     recipes = []
 
     async with httpx.AsyncClient() as client:
@@ -223,7 +223,21 @@ async def generate_shopping_list(
                         "measure": measure.strip() if measure else ""
                     })
 
-            shopping_list.extend(ingredients)
+            for ingredient in ingredients:
+                normalized_name = ingredient["ingredient"].strip().casefold()
+                existing = shopping_list_by_name.get(normalized_name)
+                if existing is None:
+                    shopping_list_by_name[normalized_name] = {
+                        "ingredient": ingredient["ingredient"],
+                        "measures": [ingredient["measure"]]
+                        if ingredient["measure"]
+                        else [],
+                    }
+                elif (
+                    ingredient["measure"]
+                    and ingredient["measure"] not in existing["measures"]
+                ):
+                    existing["measures"].append(ingredient["measure"])
 
             recipes.append({
                 "meal_id": meal.get("idMeal"),
@@ -234,7 +248,13 @@ async def generate_shopping_list(
             })
 
     return {
-        "shopping_list": shopping_list,
+        "shopping_list": [
+            {
+                "ingredient": item["ingredient"],
+                "measure": " + ".join(item["measures"]),
+            }
+            for item in shopping_list_by_name.values()
+        ],
         "recipes": recipes
     }
 
@@ -244,7 +264,7 @@ async def nutrition_tips(
     ingredients: list[str],
     current_user: models.User = Depends(get_current_user)
 ):
-    check_subscription(current_user, "Standard")
+    check_subscription(current_user, "Premium")
 
     tips = []
 

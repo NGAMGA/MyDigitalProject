@@ -1,7 +1,13 @@
+import asyncio
 import sys
 import unittest
+from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from fastapi import HTTPException, UploadFile
+from starlette.datastructures import Headers
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -10,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import models, schemas
 from app.database import Base
 from app.routers.shopping_lists import (
+    analyze_image,
     create_new_list,
     get_current_list,
     get_list_history,
@@ -76,6 +83,75 @@ class ShoppingListsTest(unittest.TestCase):
         self.assertEqual(len(history), 2)
         self.assertTrue(history[0].isActive)
         self.assertFalse(history[1].isActive)
+
+    def test_analyzes_valid_image_and_filters_items(self) -> None:
+        upload = UploadFile(
+            file=BytesIO(b"\x89PNG\r\n\x1a\nvalid-image"),
+            filename="liste.png",
+            headers=Headers({"content-type": "image/png"}),
+        )
+        analysis = SimpleNamespace(
+            raw_text="Tomates\nSavon",
+            items=[
+                SimpleNamespace(name="Tomates", confidence=0.98),
+                SimpleNamespace(name="Savon", confidence=0.91),
+            ],
+        )
+        with (
+            patch(
+                "app.routers.shopping_lists.analyze_shopping_list_image",
+                return_value=analysis,
+            ),
+            patch(
+                "app.routers.shopping_lists.classify_food_items",
+                return_value=(["Tomates"], ["Savon"]),
+            ),
+        ):
+            response = asyncio.run(
+                analyze_image(
+                    image=upload,
+                    source="gallery",
+                    current_user=self.user,
+                )
+            )
+
+        self.assertEqual([item.name for item in response.items], ["Tomates"])
+        self.assertEqual(
+            [item.name for item in response.rejectedItems],
+            ["Savon"],
+        )
+
+    def test_rejects_non_image_file(self) -> None:
+        upload = UploadFile(
+            file=BytesIO(b"not-an-image"),
+            filename="liste.txt",
+            headers=Headers({"content-type": "text/plain"}),
+        )
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(
+                analyze_image(
+                    image=upload,
+                    source="gallery",
+                    current_user=self.user,
+                )
+            )
+        self.assertEqual(context.exception.status_code, 400)
+
+    def test_rejects_empty_image(self) -> None:
+        upload = UploadFile(
+            file=BytesIO(b""),
+            filename="liste.png",
+            headers=Headers({"content-type": "image/png"}),
+        )
+        with self.assertRaises(HTTPException) as context:
+            asyncio.run(
+                analyze_image(
+                    image=upload,
+                    source="gallery",
+                    current_user=self.user,
+                )
+            )
+        self.assertEqual(context.exception.status_code, 400)
 
 
 if __name__ == "__main__":

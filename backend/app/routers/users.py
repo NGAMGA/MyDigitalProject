@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+import stripe
 
 from app import models, schemas
+from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.security import hash_password, validate_password_policy, verify_password
@@ -101,3 +103,47 @@ def change_password(
     db.add(current_user)
     db.commit()
     return {"ok": True}
+
+
+@router.delete("/me", response_model=schemas.GenericMessageResponse)
+def delete_me(
+    payload: schemas.DeleteAccountRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> schemas.GenericMessageResponse:
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le mot de passe actuel est incorrect.",
+        )
+
+    subscription = current_user.subscription
+    stripe_subscription_id = (
+        subscription.stripe_subscription_id if subscription is not None else None
+    )
+    if stripe_subscription_id:
+        if not settings.stripe_secret_key:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Impossible de supprimer le compte tant que Stripe "
+                    "n est pas configure."
+                ),
+            )
+        stripe.api_key = settings.stripe_secret_key
+        try:
+            stripe.Subscription.cancel(stripe_subscription_id)
+        except stripe.StripeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Impossible d annuler l abonnement Stripe. "
+                    "Le compte n a pas ete supprime."
+                ),
+            ) from exc
+
+    db.delete(current_user)
+    db.commit()
+    return schemas.GenericMessageResponse(
+        detail="Ton compte et tes donnees personnelles ont ete supprimes."
+    )

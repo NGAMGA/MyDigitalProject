@@ -45,9 +45,13 @@ Ce qui fonctionne aujourd'hui :
 - essai Premium de 7 jours avec moyen de paiement collecte par Stripe
 - debit automatique de 5,99 EUR par mois apres l'essai si l'utilisateur ne resilie pas
 - resiliation et reactivation depuis la page profil
+- suppression definitive du compte et des donnees associees
+- mot de passe oublie, reinitialisation et changement de mot de passe
 - liste de courses persistante par utilisateur
 - suggestions calculees depuis les ingredients de la liste reelle
 - limites Standard / Premium appliquees aux recommandations et a l'historique
+- panier de recettes accessible dans l'app avec generation de liste de courses
+- conseils nutritionnels Premium dans le detail des recettes
 - page profil et page favoris reworkees visuellement
 
 Ce qui est encore partiel ou maquette :
@@ -150,6 +154,17 @@ flutter test
 - ajout / retrait des favoris
 - le backend expose aussi des suggestions, une recherche avancee et un panier de recettes
 - le panier peut generer une liste d'ingredients depuis les recettes selectionnees
+- l'app permet d'ajouter ou retirer des recettes du panier
+- la liste generee est ajoutee a la liste de courses persistante
+- les ingredients en doublon sont regroupes lors de la generation
+
+### Compte
+
+- le lien `Mot de passe oublie` lance la demande de reinitialisation
+- un lien de reinitialisation ouvre l'ecran Flutter avec le token
+- le mot de passe peut aussi etre change depuis la page profil
+- la suppression du compte exige le mot de passe et la saisie de `SUPPRIMER`
+- un abonnement Stripe actif est annule avant la suppression definitive
 
 ### Abonnement et Stripe
 

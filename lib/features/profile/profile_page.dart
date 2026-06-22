@@ -30,6 +30,10 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isManagingSubscription = false;
   bool _isSavingProfile = false;
   bool _isSigningOut = false;
+  bool _isDeletingAccount = false;
+  bool _isChangingPassword = false;
+  bool _informationExpanded = true;
+  bool _subscriptionExpanded = true;
 
   @override
   void initState() {
@@ -328,6 +332,176 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _deleteAccount() async {
+    if (_isDeletingAccount) return;
+
+    final passwordController = TextEditingController();
+    final confirmationController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(
+          Icons.delete_forever_rounded,
+          color: Color(0xFFB3261E),
+        ),
+        title: const Text('Supprimer definitivement le compte ?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Cette action supprimera ton profil, tes listes, ton panier, '
+              'tes factures et ton abonnement. Elle est irreversible.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Mot de passe actuel',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmationController,
+              decoration: const InputDecoration(
+                labelText: 'Ecris SUPPRIMER',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final isValid = passwordController.text.isNotEmpty &&
+                  confirmationController.text.trim() == 'SUPPRIMER';
+              if (!isValid) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Renseigne ton mot de passe et ecris SUPPRIMER.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              Navigator.of(dialogContext).pop(true);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB3261E),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Supprimer mon compte'),
+          ),
+        ],
+      ),
+    );
+    final password = passwordController.text;
+    passwordController.dispose();
+    confirmationController.dispose();
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      await _profileService.deleteMe(currentPassword: password);
+      if (!mounted) return;
+      await context.read<UserSessionProvider>().clear();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AuthChoicePage()),
+        (_) => false,
+      );
+    } on ProfileServiceException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isDeletingAccount = false);
+    }
+  }
+
+  Future<void> _changePassword() async {
+    if (_isChangingPassword) return;
+    final currentController = TextEditingController();
+    final nextController = TextEditingController();
+    final confirmationController = TextEditingController();
+    final values = await showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Changer le mot de passe'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Mot de passe actuel',
+              ),
+            ),
+            TextField(
+              controller: nextController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Nouveau mot de passe',
+              ),
+            ),
+            TextField(
+              controller: confirmationController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirmer le nouveau mot de passe',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (nextController.text != confirmationController.text) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Les mots de passe ne correspondent pas.'),
+                  ),
+                );
+                return;
+              }
+              Navigator.of(dialogContext).pop([
+                currentController.text,
+                nextController.text,
+              ]);
+            },
+            child: const Text('Modifier'),
+          ),
+        ],
+      ),
+    );
+    currentController.dispose();
+    nextController.dispose();
+    confirmationController.dispose();
+    if (values == null || values.length != 2 || !mounted) return;
+    setState(() => _isChangingPassword = true);
+    try {
+      await _profileService.changePassword(
+        currentPassword: values[0],
+        nextPassword: values[1],
+      );
+      if (mounted) _showMessage('Mot de passe modifie.');
+    } on ProfileServiceException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } finally {
+      if (mounted) setState(() => _isChangingPassword = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -342,76 +516,102 @@ class _ProfilePageState extends State<ProfilePage> {
               avatarDataUrl: _user?.profile.avatarDataUrl ?? '',
             ),
             const SizedBox(height: 38),
-            const _SectionHeader(title: 'Mes informations'),
-            const SizedBox(height: 16),
-            if (_isSavingProfile) const LinearProgressIndicator(minHeight: 2),
-            if (_isSavingProfile) const SizedBox(height: 12),
-            _InfoRow(
-              label: 'Prenom :',
-              value: _orMissing(_firstName),
-              onTap: () => _editTextField(
-                title: 'Modifier le prenom',
-                fieldKey: 'firstName',
-                initialValue: _firstName,
+            _SectionHeader(
+              title: 'Mes informations',
+              expanded: _informationExpanded,
+              onTap: () => setState(
+                () => _informationExpanded = !_informationExpanded,
               ),
             ),
-            _InfoRow(
-              label: 'Nom :',
-              value: _orMissing(_lastName),
-              onTap: () => _editTextField(
-                title: 'Modifier le nom',
-                fieldKey: 'lastName',
-                initialValue: _lastName,
+            if (_informationExpanded) ...[
+              const SizedBox(height: 16),
+              if (_isSavingProfile) const LinearProgressIndicator(minHeight: 2),
+              if (_isSavingProfile) const SizedBox(height: 12),
+              _InfoRow(
+                label: 'Prenom :',
+                value: _orMissing(_firstName),
+                onTap: () => _editTextField(
+                  title: 'Modifier le prenom',
+                  fieldKey: 'firstName',
+                  initialValue: _firstName,
+                ),
               ),
-            ),
-            _InfoRow(
-              label: 'Adresse mail :',
-              value: _orMissing(_email),
-              onTap: () => _editTextField(
-                title: 'Modifier l adresse mail',
-                fieldKey: 'email',
-                initialValue: _email,
-                keyboardType: TextInputType.emailAddress,
+              _InfoRow(
+                label: 'Nom :',
+                value: _orMissing(_lastName),
+                onTap: () => _editTextField(
+                  title: 'Modifier le nom',
+                  fieldKey: 'lastName',
+                  initialValue: _lastName,
+                ),
               ),
-            ),
-            _InfoRow(
-              label: 'Date de naissance :',
-              value: _orMissing(_user?.profile.dateOfBirth ?? ''),
-              onTap: _editBirthDate,
-            ),
-            _InfoRow(
-              label: 'Telephone :',
-              value: _orMissing(_user?.profile.phoneNumber ?? ''),
-              onTap: () => _editTextField(
-                title: 'Modifier le telephone',
-                fieldKey: 'phoneNumber',
-                initialValue: _user?.profile.phoneNumber ?? '',
-                keyboardType: TextInputType.phone,
+              _InfoRow(
+                label: 'Adresse mail :',
+                value: _orMissing(_email),
+                onTap: () => _editTextField(
+                  title: 'Modifier l adresse mail',
+                  fieldKey: 'email',
+                  initialValue: _email,
+                  keyboardType: TextInputType.emailAddress,
+                ),
               ),
-            ),
-            _InfoRow(
-              label: 'Pays :',
-              value: _orMissing(_user?.profile.country ?? ''),
-              onTap: () => _editTextField(
-                title: 'Modifier le pays',
-                fieldKey: 'country',
-                initialValue: _user?.profile.country ?? '',
+              _InfoRow(
+                label: 'Date de naissance :',
+                value: _orMissing(_user?.profile.dateOfBirth ?? ''),
+                onTap: _editBirthDate,
               ),
-            ),
-            const _ImageProfileRow(),
-            const SizedBox(height: 12),
-            _ProfileImageButton(onTap: _editProfileImage),
+              _InfoRow(
+                label: 'Telephone :',
+                value: _orMissing(_user?.profile.phoneNumber ?? ''),
+                onTap: () => _editTextField(
+                  title: 'Modifier le telephone',
+                  fieldKey: 'phoneNumber',
+                  initialValue: _user?.profile.phoneNumber ?? '',
+                  keyboardType: TextInputType.phone,
+                ),
+              ),
+              _InfoRow(
+                label: 'Pays :',
+                value: _orMissing(_user?.profile.country ?? ''),
+                onTap: () => _editTextField(
+                  title: 'Modifier le pays',
+                  fieldKey: 'country',
+                  initialValue: _user?.profile.country ?? '',
+                ),
+              ),
+              const _ImageProfileRow(),
+              const SizedBox(height: 12),
+              _ProfileImageButton(onTap: _editProfileImage),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _isChangingPassword ? null : _changePassword,
+                icon: const Icon(Icons.password_rounded),
+                label: Text(
+                  _isChangingPassword
+                      ? 'Modification...'
+                      : 'Changer mon mot de passe',
+                ),
+              ),
+            ],
             const SizedBox(height: 38),
-            const _SectionHeader(title: 'Mon abonnement'),
-            const SizedBox(height: 8),
-            _SubscriptionCards(
-              subscription: _user?.subscription,
-              isStartingCheckout: _isStartingCheckout,
-              isManagingSubscription: _isManagingSubscription,
-              onPremiumPressed: _startPremiumCheckout,
-              onCancelPressed: _cancelPremiumSubscription,
-              onResumePressed: _resumePremiumSubscription,
+            _SectionHeader(
+              title: 'Mon abonnement',
+              expanded: _subscriptionExpanded,
+              onTap: () => setState(
+                () => _subscriptionExpanded = !_subscriptionExpanded,
+              ),
             ),
+            if (_subscriptionExpanded) ...[
+              const SizedBox(height: 8),
+              _SubscriptionCards(
+                subscription: _user?.subscription,
+                isStartingCheckout: _isStartingCheckout,
+                isManagingSubscription: _isManagingSubscription,
+                onPremiumPressed: _startPremiumCheckout,
+                onCancelPressed: _cancelPremiumSubscription,
+                onResumePressed: _resumePremiumSubscription,
+              ),
+            ],
             const SizedBox(height: 28),
             SizedBox(
               height: 48,
@@ -434,6 +634,25 @@ class _ProfilePageState extends State<ProfilePage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _isDeletingAccount ? null : _deleteAccount,
+              icon: _isDeletingAccount
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_forever_rounded),
+              label: Text(
+                _isDeletingAccount
+                    ? 'Suppression...'
+                    : 'Supprimer definitivement mon compte',
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFB3261E),
               ),
             ),
           ],
@@ -585,25 +804,50 @@ class _EditProfileFieldSheetState extends State<_EditProfileFieldSheet> {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
+  const _SectionHeader({
+    required this.title,
+    required this.expanded,
+    required this.onTap,
+  });
 
   final String title;
+  final bool expanded;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF202020),
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF202020),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(width: 8),
+              AnimatedRotation(
+                turns: expanded ? 0 : 0.5,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: const Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  size: 17,
+                ),
+              ),
+              const Spacer(),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        const Icon(Icons.keyboard_arrow_up_rounded, size: 17),
-      ],
+      ),
     );
   }
 }
@@ -867,7 +1111,7 @@ class _SubscriptionStatusBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

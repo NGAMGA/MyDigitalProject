@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import '../models/meal.dart';
 import '../providers/favorites_provider.dart';
 import '../services/meal_api_service.dart';
+import '../services/menu_cart_service.dart';
+import 'menu_cart_screen.dart';
 import 'meal_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -108,6 +110,29 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  void _openCart() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const MenuCartScreen()),
+    );
+  }
+
+  Future<void> _addCurrentMealToCart() async {
+    final meal = _currentMeal;
+    if (meal == null) return;
+    try {
+      await MenuCartService().addMeal(meal);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${meal.name} ajoute au panier.')),
+      );
+    } on MenuCartException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _debounceTimer?.cancel();
@@ -126,7 +151,7 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.fromLTRB(9, 18, 9, 88),
           child: Column(
             children: [
-              _SearchHeader(onBack: widget.onBack),
+              _SearchHeader(onBack: widget.onBack, onCart: _openCart),
               const SizedBox(height: 20),
               _SearchField(
                 controller: _searchController,
@@ -177,14 +202,16 @@ class _SearchScreenState extends State<SearchScreen> {
       onSkip: _skipAndNext,
       onSave: _saveAndNext,
       onOpenDetail: _openDetail,
+      onAddToCart: _addCurrentMealToCart,
     );
   }
 }
 
 class _SearchHeader extends StatelessWidget {
-  const _SearchHeader({required this.onBack});
+  const _SearchHeader({required this.onBack, required this.onCart});
 
   final VoidCallback? onBack;
+  final VoidCallback onCart;
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +234,15 @@ class _SearchHeader extends StatelessWidget {
               color: Color(0xFF202020),
               fontSize: 20,
               fontWeight: FontWeight.w700,
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              tooltip: 'Panier de recettes',
+              onPressed: onCart,
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.shopping_basket_outlined, size: 25),
             ),
           ),
         ],
@@ -264,6 +300,7 @@ class _FeaturedMealCard extends StatefulWidget {
     required this.onSkip,
     required this.onSave,
     required this.onOpenDetail,
+    required this.onAddToCart,
   });
 
   final Meal meal;
@@ -272,6 +309,7 @@ class _FeaturedMealCard extends StatefulWidget {
   final VoidCallback onSkip;
   final VoidCallback onSave;
   final VoidCallback onOpenDetail;
+  final VoidCallback onAddToCart;
 
   @override
   State<_FeaturedMealCard> createState() => _FeaturedMealCardState();
@@ -389,12 +427,24 @@ class _FeaturedMealCardState extends State<_FeaturedMealCard>
                 Positioned(
                   right: 12,
                   top: 12,
-                  child: _RoundAction(
-                    icon: Icons.receipt_long_outlined,
-                    onTap: widget.onOpenDetail,
-                    size: 52,
-                    iconSize: 28,
-                    backgroundColor: Colors.white.withOpacity(0.92),
+                  child: Column(
+                    children: [
+                      _RoundAction(
+                        icon: Icons.add_shopping_cart_rounded,
+                        onTap: widget.onAddToCart,
+                        size: 52,
+                        iconSize: 27,
+                        backgroundColor: Colors.white.withValues(alpha: 0.92),
+                      ),
+                      const SizedBox(height: 10),
+                      _RoundAction(
+                        icon: Icons.receipt_long_outlined,
+                        onTap: widget.onOpenDetail,
+                        size: 52,
+                        iconSize: 28,
+                        backgroundColor: Colors.white.withValues(alpha: 0.92),
+                      ),
+                    ],
                   ),
                 ),
                 Positioned(
@@ -453,7 +503,7 @@ class _MealCaption extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.26),
+        color: Colors.black.withValues(alpha: 0.26),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Padding(
@@ -506,7 +556,7 @@ class _NavCluster extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.82),
+        color: Colors.white.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

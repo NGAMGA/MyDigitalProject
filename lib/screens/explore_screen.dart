@@ -110,7 +110,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-
   List<String> get _filteredAreas {
     if (_selectedRegion == null) return _allAreas;
     return _allAreas
@@ -212,7 +211,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color:
-              isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+              isSelected ? Colors.white : Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -248,14 +247,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.85), color],
+                colors: [color.withValues(alpha: 0.85), color],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.25),
+                  color: color.withValues(alpha: 0.25),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -268,7 +267,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Icon(icon,
-                      color: Colors.white.withOpacity(0.8), size: 28),
+                      color: Colors.white.withValues(alpha: 0.8), size: 28),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -284,7 +283,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       Text(
                         region,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 11,
                         ),
                       ),
@@ -302,7 +301,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _buildMealsList() {
     return Column(
       children: [
-
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
           child: Row(

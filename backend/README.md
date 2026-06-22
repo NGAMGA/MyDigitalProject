@@ -32,6 +32,8 @@ Autres endpoints disponibles dans le backend :
 ```text
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
+POST /api/v1/users/change-password
+DELETE /api/v1/users/me
 POST /api/v1/shopping-lists/analyze-image
 POST /api/v1/shopping-lists/validate-items
 POST /api/v1/subscription/checkout/premium
@@ -44,6 +46,7 @@ GET  /api/v1/menus/cart
 POST /api/v1/menus/cart/add
 DELETE /api/v1/menus/cart/{meal_id}
 POST /api/v1/menus/cart/generate-list
+GET  /api/v1/menus/nutrition-tips
 ```
 
 ## Lancement avec Docker
