@@ -20,6 +20,7 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Komi, votre assistant pour des repas simples et équilibrés.">
+  <meta name="theme-color" content="#062F1A">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,8 +33,57 @@
 
   <title>Komi</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    #install-komi {
+      position: fixed;
+      right: 14px;
+      bottom: calc(82px + env(safe-area-inset-bottom));
+      z-index: 999999;
+      display: none;
+      align-items: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 0 15px;
+      border: 0;
+      border-radius: 999px;
+      background: #062f1a;
+      color: #ddf577;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+      font: 700 14px/1 system-ui, sans-serif;
+      cursor: pointer;
+    }
+
+    #install-help {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: calc(138px + env(safe-area-inset-bottom));
+      z-index: 1000000;
+      display: none;
+      max-width: 390px;
+      margin: auto;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: #fff;
+      color: #062f1a;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, .25);
+      font: 600 14px/1.4 system-ui, sans-serif;
+    }
+
+    @media (display-mode: standalone) {
+      #install-komi,
+      #install-help {
+        display: none !important;
+      }
+    }
+  </style>
 </head>
 <body>
+  <button id="install-komi" type="button" aria-label="Installer Komi">＋ Installer Komi</button>
+  <div id="install-help" role="status">
+    Sur iPhone : appuie sur Partager, puis « Sur l’écran d’accueil ».
+  </div>
   <script src="flutter_bootstrap.js" async></script>
+  <script src="pwa-install.js"></script>
 </body>
 </html>

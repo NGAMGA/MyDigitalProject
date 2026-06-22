@@ -1,11 +1,14 @@
 {
-    "name": "my_digital_project",
-    "short_name": "my_digital_project",
-    "start_url": ".",
+    "id": "/app/",
+    "name": "Komi",
+    "short_name": "Komi",
+    "start_url": "/app/",
+    "scope": "/app/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#062F1A",
+    "description": "Komi, votre assistant pour des repas simples et équilibrés.",
+    "categories": ["food", "health", "lifestyle"],
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
@@ -23,13 +26,13 @@
             "src": "icons/Icon-maskable-192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "maskable"
+            "purpose": "any maskable"
         },
         {
             "src": "icons/Icon-maskable-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "maskable"
+            "purpose": "any maskable"
         }
     ]
 }
