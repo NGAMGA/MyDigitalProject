@@ -1,12 +1,12 @@
 'use strict';
 
-const CACHE_NAME = 'komi-app-v1';
+const CACHE_NAME = 'komi-app-v2';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './icons/Icon-192.png',
-  './icons/Icon-512.png',
+  './icons/komi-192.png',
+  './icons/komi-512.png',
 ];
 
 self.addEventListener('install', (event) => {
