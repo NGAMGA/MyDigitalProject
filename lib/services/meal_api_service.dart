@@ -61,6 +61,36 @@ class MealApiService {
     }
   }
 
+  Future<List<Meal>> discoverMeals() async {
+    const discoveryAreas = [
+      'French',
+      'Italian',
+      'Japanese',
+      'Mexican',
+      'Moroccan',
+      'Indian',
+    ];
+
+    final results = await Future.wait(
+      discoveryAreas.map(getMealsByArea),
+    );
+
+    final uniqueMeals = <String, Meal>{};
+    var row = 0;
+    while (uniqueMeals.length < 18) {
+      var addedAtThisRow = false;
+      for (final meals in results) {
+        if (row >= meals.length) continue;
+        addedAtThisRow = true;
+        uniqueMeals.putIfAbsent(meals[row].id, () => meals[row]);
+      }
+      if (!addedAtThisRow) break;
+      row++;
+    }
+
+    return uniqueMeals.values.toList();
+  }
+
   Future<List<Meal>> getMealsByIngredients(List<String> ingredients) async {
     final normalizedIngredients = ingredients
         .map(_ingredientForApi)

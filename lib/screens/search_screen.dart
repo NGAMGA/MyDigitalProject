@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +21,7 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final _searchController = TextEditingController(text: 'Chicken');
+  final _searchController = TextEditingController();
   final _apiService = MealApiService();
 
   List<Meal> _results = const [];
@@ -29,6 +29,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   Timer? _debounceTimer;
+  int _searchRequestId = 0;
 
   Meal? get _currentMeal {
     if (_results.isEmpty) return null;
@@ -45,14 +46,13 @@ class _SearchScreenState extends State<SearchScreen> {
   void _scheduleSearch() {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 650), () {
-      final query = _searchController.text.trim();
-      if (query.isNotEmpty) _search();
+      _search();
     });
   }
 
   Future<void> _search() async {
     final query = _searchController.text.trim();
-    if (query.isEmpty) return;
+    final requestId = ++_searchRequestId;
 
     setState(() {
       _isLoading = true;
@@ -60,15 +60,17 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      final results = await _apiService.searchMeals(query);
-      if (!mounted) return;
+      final results = query.isEmpty
+          ? await _apiService.discoverMeals()
+          : await _apiService.searchMeals(query);
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _results = results;
         _currentIndex = 0;
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _searchRequestId) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -269,7 +271,7 @@ class _SearchField extends StatelessWidget {
       onSubmitted: (_) => onSubmitted(),
       cursorColor: const Color(0xFF062F1A),
       decoration: InputDecoration(
-        hintText: 'Rechercher',
+        hintText: 'Rechercher un plat',
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         isDense: true,
         filled: true,
